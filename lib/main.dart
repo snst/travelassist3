@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'database/database.dart';
 import 'screens/calculator_page.dart';
 import 'screens/currency_settings_screen.dart';
+import 'screens/todo_list_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _database = AppDatabase();
     _database.seedInitialCurrenciesIfEmpty();
+    _database.seedInitialTodoItemsIfEmpty();
   }
 
   @override
@@ -67,6 +69,19 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
         actions: [
           IconButton(
+            icon: const Icon(Icons.checklist),
+            tooltip: 'Checklist',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => TodoListPage(
+                    database: widget.database,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.calculate),
             tooltip: 'Calculator',
             onPressed: () {
@@ -83,7 +98,15 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: const Icon(Icons.more_vert),
             tooltip: 'Menu',
             onSelected: (value) {
-              if (value == 'calculator') {
+              if (value == 'checklist') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TodoListPage(
+                      database: widget.database,
+                    ),
+                  ),
+                );
+              } else if (value == 'calculator') {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => CalculatorPage(
@@ -102,6 +125,17 @@ class _MyHomePageState extends State<MyHomePage> {
               }
             },
             itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'checklist',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.checklist, color: Colors.deepPurple),
+                    SizedBox(width: 12),
+                    Flexible(child: Text('Travel Checklist')),
+                  ],
+                ),
+              ),
               const PopupMenuItem<String>(
                 value: 'calculator',
                 child: Row(
@@ -187,7 +221,31 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 1,
+                  child: ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.checklist),
+                    ),
+                    title: const Text(
+                      'Travel Checklist',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text('Manage packing list & tasks'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => TodoListPage(
+                            database: widget.database,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
