@@ -21,13 +21,21 @@ class TodoItems extends Table {
   IntColumn get state => integer().withDefault(const Constant(0))(); // 0: open, 1: skipped, 2: done
 }
 
-@DriftDatabase(tables: [Currencies, TodoItems])
+class Notes extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get comment => text().withDefault(const Constant(''))();
+  TextColumn get link => text().withDefault(const Constant(''))();
+  TextColumn get tags => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+@DriftDatabase(tables: [Currencies, TodoItems, Notes])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -38,6 +46,9 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (m, from, to) async {
         if (from < 2) {
           await m.createTable(todoItems);
+        }
+        if (from < 3) {
+          await m.createTable(notes);
         }
       },
     );
@@ -215,5 +226,100 @@ class AppDatabase extends _$AppDatabase {
       await addTodoItem(name: 'T-Shirts', category: 'Clothing', quantity: 5);
       await addTodoItem(name: 'Jacket', category: 'Clothing', quantity: 1);
     }
+  }
+
+  // --- Note Operations ---
+  Stream<List<Note>> watchAllNotes() {
+    return (select(notes)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ]))
+        .watch();
+  }
+
+  Future<List<String>> getAllNoteTags() async {
+    final allNotes = await select(notes).get();
+    final tagSet = <String>{};
+    for (final note in allNotes) {
+      final tags = note.tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
+      tagSet.addAll(tags);
+    }
+    final sorted = tagSet.toList()..sort();
+    return sorted;
+  }
+
+  Future<int> addNote({
+    required String comment,
+    String link = '',
+    List<String> tags = const [],
+  }) {
+    final tagString = tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',');
+    return into(notes).insert(
+      NotesCompanion.insert(
+        comment: Value(comment),
+        link: Value(link),
+        tags: Value(tagString),
+      ),
+    );
+  }
+
+  Future<bool> updateNoteEntry(Note note) {
+    return update(notes).replace(note);
+  }
+
+  Future<int> deleteNote(int id) {
+    return (delete(notes)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<int> restoreNote(Note note) {
+    return into(notes).insert(note);
+  }
+
+  Future<void> seedInitialNotesIfEmpty() async {
+    final count = await select(notes).get();
+    if (count.isEmpty) {
+      await addNote(
+        comment: 'Grand Hotel Address & Reservation',
+        link: 'https://maps.google.com/?q=Grand+Hotel',
+        tags: ['hotel', 'map', 'important'],
+      );
+      await addNote(
+        comment: 'Flight Booking Reference: #AZ829',
+        link: 'https://airline.com/booking/AZ829',
+        tags: ['flight', 'tickets'],
+      );
+      await addNote(
+        comment: 'Emergency Embassy Contact: +39 06 46741',
+        link: '',
+        tags: ['embassy', 'contact', 'important'],
+      );
+    }
+  }
+}
+
+extension NoteHelpers on Note {
+  List<String> get tagList => tags
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  bool get isLink =>
+      link.toLowerCase().startsWith('http://') ||
+      link.toLowerCase().startsWith('https://');
+
+  bool get isGeo => link.toLowerCase().startsWith('geo:');
+
+  bool get isFile => link.startsWith('/');
+
+  String shortLink() {
+    if (link.startsWith('https://')) {
+      return link.substring(8);
+    } else if (link.startsWith('http://')) {
+      return link.substring(7);
+    } else if (link.length > 30) {
+      return '...${link.substring(link.length - 25)}';
+    }
+    return link;
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'database/database.dart';
 import 'screens/calculator_page.dart';
 import 'screens/currency_settings_screen.dart';
+import 'screens/note_list_page.dart';
 import 'screens/todo_list_page.dart';
 
 void main() {
@@ -25,6 +26,7 @@ class _MyAppState extends State<MyApp> {
     _database = AppDatabase();
     _database.seedInitialCurrenciesIfEmpty();
     _database.seedInitialTodoItemsIfEmpty();
+    _database.seedInitialNotesIfEmpty();
   }
 
   @override
@@ -82,6 +84,19 @@ class _MyHomePageState extends State<MyHomePage> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.note_alt_outlined),
+            tooltip: 'Notes',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => NoteListPage(
+                    database: widget.database,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.calculate),
             tooltip: 'Calculator',
             onPressed: () {
@@ -102,6 +117,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => TodoListPage(
+                      database: widget.database,
+                    ),
+                  ),
+                );
+              } else if (value == 'notes') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => NoteListPage(
                       database: widget.database,
                     ),
                   ),
@@ -133,6 +156,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     Icon(Icons.checklist, color: Colors.deepPurple),
                     SizedBox(width: 12),
                     Flexible(child: Text('Travel Checklist')),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'notes',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.note_alt_outlined, color: Colors.deepPurple),
+                    SizedBox(width: 12),
+                    Flexible(child: Text('Travel Notes')),
                   ],
                 ),
               ),
