@@ -13,7 +13,7 @@ void main() {
     });
   });
 
-  testWidgets('App renders home page and opens Currency Settings from popup menu',
+  testWidgets('Home page switches between features via the navigation bar',
       (WidgetTester tester) async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     await database.seedInitialCurrenciesIfEmpty();
@@ -25,26 +25,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify main app bar title and home currency card
-    expect(find.text('Travel Assist'), findsOneWidget);
-    expect(find.text('Home Currency'), findsOneWidget);
+    expect(find.text('Currency Calculator'), findsOneWidget);
 
-    // Open popup menu
-    final menuButton = find.byIcon(Icons.more_vert);
-    expect(menuButton, findsOneWidget);
-    await tester.tap(menuButton);
+    await tester.tap(find.byIcon(Icons.currency_exchange_outlined));
     await tester.pumpAndSettle();
 
-    // Tap 'Currency Settings' menu item
-    final currencySettingsOption = find.text('Currency Settings');
-    expect(currencySettingsOption, findsOneWidget);
-    await tester.tap(currencySettingsOption);
-    await tester.pumpAndSettle();
-
-    // Verify Currency Settings screen loaded
-    expect(find.text('Currency Settings'), findsWidgets);
     expect(find.text('Add Currency'), findsOneWidget);
 
+    await tester.tap(find.byIcon(Icons.calculate_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Currency Calculator'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
     await database.close();
   });
 }

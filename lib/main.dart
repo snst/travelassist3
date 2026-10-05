@@ -63,295 +63,45 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  int _selectedIndex = 0;
+
+  late final List<Widget> _pages = [
+    CalculatorPage(database: widget.database),
+    TodoListPage(database: widget.database),
+    NoteListPage(database: widget.database),
+    CurrencySettingsScreen(database: widget.database),
+  ];
+
   @override
   Widget build(BuildContext context) {
+    // IndexedStack keeps every feature mounted so switching tabs preserves its state.
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.checklist),
-            tooltip: 'Checklist',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => TodoListPage(
-                    database: widget.database,
-                  ),
-                ),
-              );
-            },
+      body: IndexedStack(index: _selectedIndex, children: _pages),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.calculate_outlined),
+            selectedIcon: Icon(Icons.calculate),
+            label: 'Calculator',
           ),
-          IconButton(
-            icon: const Icon(Icons.note_alt_outlined),
-            tooltip: 'Notes',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => NoteListPage(
-                    database: widget.database,
-                  ),
-                ),
-              );
-            },
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist),
+            label: 'Checklist',
           ),
-          IconButton(
-            icon: const Icon(Icons.calculate),
-            tooltip: 'Calculator',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => CalculatorPage(
-                    database: widget.database,
-                  ),
-                ),
-              );
-            },
+          NavigationDestination(
+            icon: Icon(Icons.note_alt_outlined),
+            selectedIcon: Icon(Icons.note_alt),
+            label: 'Notes',
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            tooltip: 'Menu',
-            onSelected: (value) {
-              if (value == 'checklist') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => TodoListPage(
-                      database: widget.database,
-                    ),
-                  ),
-                );
-              } else if (value == 'notes') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => NoteListPage(
-                      database: widget.database,
-                    ),
-                  ),
-                );
-              } else if (value == 'calculator') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => CalculatorPage(
-                      database: widget.database,
-                    ),
-                  ),
-                );
-              } else if (value == 'currency_settings') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => CurrencySettingsScreen(
-                      database: widget.database,
-                    ),
-                  ),
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'checklist',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.checklist, color: Colors.deepPurple),
-                    SizedBox(width: 12),
-                    Flexible(child: Text('Travel Checklist')),
-                  ],
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'notes',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.note_alt_outlined, color: Colors.deepPurple),
-                    SizedBox(width: 12),
-                    Flexible(child: Text('Travel Notes')),
-                  ],
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'calculator',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.calculate, color: Colors.deepPurple),
-                    SizedBox(width: 12),
-                    Flexible(child: Text('Currency Calculator')),
-                  ],
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'currency_settings',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.currency_exchange, color: Colors.deepPurple),
-                    SizedBox(width: 12),
-                    Flexible(child: Text('Currency Settings')),
-                  ],
-                ),
-              ),
-            ],
+          NavigationDestination(
+            icon: Icon(Icons.currency_exchange_outlined),
+            selectedIcon: Icon(Icons.currency_exchange),
+            label: 'Currencies',
           ),
         ],
-      ),
-      body: StreamBuilder<List<Currency>>(
-        stream: widget.database.watchAllCurrencies(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final currencies = snapshot.data ?? [];
-          final homeCurrency = currencies.firstWhere(
-            (c) => c.isHome,
-            orElse: () => currencies.isNotEmpty
-                ? currencies.first
-                : const Currency(
-                    id: 0,
-                    name: 'None',
-                    shortName: '---',
-                    rate: 1.0,
-                    isHome: false,
-                  ),
-          );
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Card(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.home, size: 32),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Home Currency',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                '${homeCurrency.name} (${homeCurrency.shortName})',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Card(
-                  elevation: 1,
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.checklist),
-                    ),
-                    title: const Text(
-                      'Travel Checklist',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: const Text('Manage packing list & tasks'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TodoListPage(
-                            database: widget.database,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Saved Currencies',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => CurrencySettingsScreen(
-                              database: widget.database,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Manage'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: currencies.isEmpty
-                      ? const Center(child: Text('No currencies available'))
-                      : ListView.builder(
-                          itemCount: currencies.length,
-                          itemBuilder: (context, index) {
-                            final currency = currencies[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                child: Text(
-                                  currency.shortName.isNotEmpty
-                                      ? currency.shortName.substring(0, 1)
-                                      : '\$',
-                                ),
-                              ),
-                              title: Text(
-                                '${currency.name} (${currency.shortName})',
-                              ),
-                              subtitle: Text('Rate: ${currency.rate}'),
-                              trailing: currency.isHome
-                                  ? const Chip(
-                                      avatar: Icon(Icons.check, size: 16),
-                                      label: Text('Home'),
-                                    )
-                                  : null,
-                            );
-                          },
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => CalculatorPage(
-                database: widget.database,
-              ),
-            ),
-          );
-        },
-        icon: const Icon(Icons.calculate),
-        label: const Text('Calculator'),
       ),
     );
   }
