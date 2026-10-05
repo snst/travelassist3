@@ -14,6 +14,7 @@ void main() {
     String method = '',
     DateTime? date,
     bool includeInAverage = true,
+    bool isPlanned = false,
   }) {
     return MoneyTransaction(
       id: ++nextId,
@@ -25,6 +26,7 @@ void main() {
       tags: '',
       date: date ?? DateTime(2026, 5, 1, 12),
       includeInAverage: includeInAverage,
+      isPlanned: isPlanned,
     );
   }
 
@@ -66,6 +68,27 @@ void main() {
     // Only the first expense counts towards the daily average, spread over 2 days.
     expect(balance.days, 2);
     expect(balance.dailyAverage.total.total.value, 12.5);
+  });
+
+  test('Planned expenses stay out of current figures', () {
+    final balance = Balance.from(
+      currencies: [eur, usd],
+      transactions: [
+        tx(TransactionKind.withdrawal, 100, 'EUR', method: 'Visa'),
+        tx(TransactionKind.expense, 20, 'EUR', method: cashMethod),
+        tx(TransactionKind.expense, 30, 'EUR',
+            method: cashMethod, isPlanned: true, date: DateTime(2026, 5, 10)),
+        tx(TransactionKind.expense, 40, 'EUR',
+            method: 'Visa', isPlanned: true, date: DateTime(2026, 5, 10)),
+      ],
+    );
+
+    expect(balance.cashOnHand.total.value, 80);
+    expect(balance.expenses.total.total.value, 20);
+    expect(balance.planned.total.total.value, 70);
+    expect(balance.planned.card.total.value, 40);
+    expect(balance.cashAfterPlanned.total.value, 50);
+    expect(balance.days, 1);
   });
 
   test('Unknown currency is kept without conversion', () {

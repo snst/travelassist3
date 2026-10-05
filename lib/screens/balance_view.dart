@@ -38,6 +38,22 @@ class BalanceView extends StatelessWidget {
           total: expenses.total.total,
           children: _expenseLines(expenses, balance),
         ),
+        if (!balance.planned.total.isEmpty) ...[
+          _Section(
+            title: 'Planned expenses',
+            icon: Icons.schedule,
+            color: expenseColor,
+            total: balance.planned.total.total,
+            children: _expenseLines(balance.planned, balance),
+          ),
+          _Section(
+            title: 'Cash after planned',
+            icon: Icons.account_balance_wallet,
+            color: cashColor,
+            total: balance.cashAfterPlanned.total,
+            children: _currencyLines(balance.cashAfterPlanned, balance),
+          ),
+        ],
         if (!average.total.isEmpty)
           _Section(
             title: 'Daily average (${balance.days} ${balance.days == 1 ? 'day' : 'days'})',

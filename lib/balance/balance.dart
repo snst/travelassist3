@@ -69,7 +69,9 @@ class Balance {
   Balance._(this.home)
       : expenses = ExpenseBreakdown(home),
         dailyAverage = ExpenseBreakdown(home),
+        planned = ExpenseBreakdown(home),
         cashOnHand = Totals(home),
+        cashAfterPlanned = Totals(home),
         withdrawals = Totals(home),
         deposits = Totals(home),
         cashCounts = Totals(home);
@@ -87,11 +89,18 @@ class Balance {
     DateTime? last;
 
     for (final t in transactions) {
-      first = first == null || t.date.isBefore(first) ? t.date : first;
-      last = last == null || t.date.isAfter(last) ? t.date : last;
-
       final amount = CurrencyValue(t.amount, byCode[t.currency]);
       final code = t.currency;
+
+      // Planned expenses are future costs: they must not affect actual figures or the day range.
+      if (t.isPlanned && t.isExpense) {
+        balance.planned.add(code, amount, isCash: t.isCash, method: t.method.trim());
+        if (t.isCash) balance.cashAfterPlanned.add(code, amount, sign: -1);
+        continue;
+      }
+
+      first = first == null || t.date.isBefore(first) ? t.date : first;
+      last = last == null || t.date.isAfter(last) ? t.date : last;
 
       switch (t.type) {
         case TransactionKind.expense:
@@ -119,6 +128,8 @@ class Balance {
       }
     }
 
+    balance.cashOnHand.byCurrency.forEach((code, v) => balance.cashAfterPlanned.add(code, v));
+
     if (first != null && last != null) {
       final start = DateTime.utc(first.year, first.month, first.day);
       final end = DateTime.utc(last.year, last.month, last.day);
@@ -138,7 +149,9 @@ class Balance {
   final Currency? home;
   final ExpenseBreakdown expenses;
   ExpenseBreakdown dailyAverage;
+  final ExpenseBreakdown planned;
   final Totals cashOnHand;
+  final Totals cashAfterPlanned;
   final Totals withdrawals;
   final Map<String, Totals> withdrawalsByMethod = {};
   final Totals deposits;

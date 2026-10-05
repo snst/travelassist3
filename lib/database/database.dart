@@ -40,6 +40,7 @@ class MoneyTransactions extends Table {
   TextColumn get tags => text().withDefault(const Constant(''))();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get includeInAverage => boolean().withDefault(const Constant(true))();
+  BoolColumn get isPlanned => boolean().withDefault(const Constant(false))(); // expenses only
 }
 
 @DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
@@ -48,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -65,6 +66,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 4) {
           await m.createTable(moneyTransactions);
+        }
+        if (from == 4) {
+          await m.addColumn(moneyTransactions, moneyTransactions.isPlanned);
         }
       },
     );
@@ -331,6 +335,7 @@ class AppDatabase extends _$AppDatabase {
     List<String> tags = const [],
     DateTime? date,
     bool includeInAverage = true,
+    bool isPlanned = false,
   }) {
     return into(moneyTransactions).insert(
       MoneyTransactionsCompanion.insert(
@@ -342,6 +347,7 @@ class AppDatabase extends _$AppDatabase {
         tags: Value(tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',')),
         date: Value(date ?? DateTime.now()),
         includeInAverage: Value(includeInAverage),
+        isPlanned: Value(isPlanned),
       ),
     );
   }

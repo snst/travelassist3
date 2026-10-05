@@ -1215,6 +1215,21 @@ class $MoneyTransactionsTable extends MoneyTransactions
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _isPlannedMeta = const VerificationMeta(
+    'isPlanned',
+  );
+  @override
+  late final GeneratedColumn<bool> isPlanned = GeneratedColumn<bool>(
+    'is_planned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_planned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1226,6 +1241,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     tags,
     date,
     includeInAverage,
+    isPlanned,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1297,6 +1313,12 @@ class $MoneyTransactionsTable extends MoneyTransactions
         ),
       );
     }
+    if (data.containsKey('is_planned')) {
+      context.handle(
+        _isPlannedMeta,
+        isPlanned.isAcceptableOrUnknown(data['is_planned']!, _isPlannedMeta),
+      );
+    }
     return context;
   }
 
@@ -1342,6 +1364,10 @@ class $MoneyTransactionsTable extends MoneyTransactions
         DriftSqlType.bool,
         data['${effectivePrefix}include_in_average'],
       )!,
+      isPlanned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_planned'],
+      )!,
     );
   }
 
@@ -1362,6 +1388,7 @@ class MoneyTransaction extends DataClass
   final String tags;
   final DateTime date;
   final bool includeInAverage;
+  final bool isPlanned;
   const MoneyTransaction({
     required this.id,
     required this.kind,
@@ -1372,6 +1399,7 @@ class MoneyTransaction extends DataClass
     required this.tags,
     required this.date,
     required this.includeInAverage,
+    required this.isPlanned,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1385,6 +1413,7 @@ class MoneyTransaction extends DataClass
     map['tags'] = Variable<String>(tags);
     map['date'] = Variable<DateTime>(date);
     map['include_in_average'] = Variable<bool>(includeInAverage);
+    map['is_planned'] = Variable<bool>(isPlanned);
     return map;
   }
 
@@ -1399,6 +1428,7 @@ class MoneyTransaction extends DataClass
       tags: Value(tags),
       date: Value(date),
       includeInAverage: Value(includeInAverage),
+      isPlanned: Value(isPlanned),
     );
   }
 
@@ -1417,6 +1447,7 @@ class MoneyTransaction extends DataClass
       tags: serializer.fromJson<String>(json['tags']),
       date: serializer.fromJson<DateTime>(json['date']),
       includeInAverage: serializer.fromJson<bool>(json['includeInAverage']),
+      isPlanned: serializer.fromJson<bool>(json['isPlanned']),
     );
   }
   @override
@@ -1432,6 +1463,7 @@ class MoneyTransaction extends DataClass
       'tags': serializer.toJson<String>(tags),
       'date': serializer.toJson<DateTime>(date),
       'includeInAverage': serializer.toJson<bool>(includeInAverage),
+      'isPlanned': serializer.toJson<bool>(isPlanned),
     };
   }
 
@@ -1445,6 +1477,7 @@ class MoneyTransaction extends DataClass
     String? tags,
     DateTime? date,
     bool? includeInAverage,
+    bool? isPlanned,
   }) => MoneyTransaction(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -1455,6 +1488,7 @@ class MoneyTransaction extends DataClass
     tags: tags ?? this.tags,
     date: date ?? this.date,
     includeInAverage: includeInAverage ?? this.includeInAverage,
+    isPlanned: isPlanned ?? this.isPlanned,
   );
   MoneyTransaction copyWithCompanion(MoneyTransactionsCompanion data) {
     return MoneyTransaction(
@@ -1469,6 +1503,7 @@ class MoneyTransaction extends DataClass
       includeInAverage: data.includeInAverage.present
           ? data.includeInAverage.value
           : this.includeInAverage,
+      isPlanned: data.isPlanned.present ? data.isPlanned.value : this.isPlanned,
     );
   }
 
@@ -1483,7 +1518,8 @@ class MoneyTransaction extends DataClass
           ..write('comment: $comment, ')
           ..write('tags: $tags, ')
           ..write('date: $date, ')
-          ..write('includeInAverage: $includeInAverage')
+          ..write('includeInAverage: $includeInAverage, ')
+          ..write('isPlanned: $isPlanned')
           ..write(')'))
         .toString();
   }
@@ -1499,6 +1535,7 @@ class MoneyTransaction extends DataClass
     tags,
     date,
     includeInAverage,
+    isPlanned,
   );
   @override
   bool operator ==(Object other) =>
@@ -1512,7 +1549,8 @@ class MoneyTransaction extends DataClass
           other.comment == this.comment &&
           other.tags == this.tags &&
           other.date == this.date &&
-          other.includeInAverage == this.includeInAverage);
+          other.includeInAverage == this.includeInAverage &&
+          other.isPlanned == this.isPlanned);
 }
 
 class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
@@ -1525,6 +1563,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
   final Value<String> tags;
   final Value<DateTime> date;
   final Value<bool> includeInAverage;
+  final Value<bool> isPlanned;
   const MoneyTransactionsCompanion({
     this.id = const Value.absent(),
     this.kind = const Value.absent(),
@@ -1535,6 +1574,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
     this.includeInAverage = const Value.absent(),
+    this.isPlanned = const Value.absent(),
   });
   MoneyTransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1546,6 +1586,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
     this.includeInAverage = const Value.absent(),
+    this.isPlanned = const Value.absent(),
   }) : amount = Value(amount),
        currency = Value(currency);
   static Insertable<MoneyTransaction> custom({
@@ -1558,6 +1599,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Expression<String>? tags,
     Expression<DateTime>? date,
     Expression<bool>? includeInAverage,
+    Expression<bool>? isPlanned,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1569,6 +1611,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       if (tags != null) 'tags': tags,
       if (date != null) 'date': date,
       if (includeInAverage != null) 'include_in_average': includeInAverage,
+      if (isPlanned != null) 'is_planned': isPlanned,
     });
   }
 
@@ -1582,6 +1625,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Value<String>? tags,
     Value<DateTime>? date,
     Value<bool>? includeInAverage,
+    Value<bool>? isPlanned,
   }) {
     return MoneyTransactionsCompanion(
       id: id ?? this.id,
@@ -1593,6 +1637,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       tags: tags ?? this.tags,
       date: date ?? this.date,
       includeInAverage: includeInAverage ?? this.includeInAverage,
+      isPlanned: isPlanned ?? this.isPlanned,
     );
   }
 
@@ -1626,6 +1671,9 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     if (includeInAverage.present) {
       map['include_in_average'] = Variable<bool>(includeInAverage.value);
     }
+    if (isPlanned.present) {
+      map['is_planned'] = Variable<bool>(isPlanned.value);
+    }
     return map;
   }
 
@@ -1640,7 +1688,8 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
           ..write('comment: $comment, ')
           ..write('tags: $tags, ')
           ..write('date: $date, ')
-          ..write('includeInAverage: $includeInAverage')
+          ..write('includeInAverage: $includeInAverage, ')
+          ..write('isPlanned: $isPlanned')
           ..write(')'))
         .toString();
   }

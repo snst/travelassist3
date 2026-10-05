@@ -146,7 +146,7 @@ class _EntriesView extends StatelessWidget {
 
     // Entries are sorted newest first; flatten into day headers and entries.
     final dayExpenses = <DateTime, CurrencyValue>{};
-    for (final t in transactions.where((t) => t.isExpense)) {
+    for (final t in transactions.where((t) => t.isExpense && !t.isPlanned)) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
     }
@@ -251,6 +251,7 @@ class _EntryTile extends StatelessWidget {
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign = home.currency == null || home.currencyString != t.currency;
     final details = [
+      if (t.isPlanned) 'Planned',
       if (t.isExpense || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
       if (t.comment.isNotEmpty) t.comment,
     ].join(' · ');
@@ -272,7 +273,7 @@ class _EntryTile extends StatelessWidget {
           onTap: onTap,
           leading: CircleAvatar(
             backgroundColor: scheme.surfaceContainerHigh,
-            child: Icon(transactionIcon(t.type)),
+            child: Icon(t.isPlanned ? Icons.schedule : transactionIcon(t.type)),
           ),
           title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: details.isEmpty

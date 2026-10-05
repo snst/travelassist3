@@ -63,8 +63,8 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
   late List<String> _tags;
   late DateTime _date;
   late bool _includeInAverage;
+  late bool _isPlanned;
   late final Balance _balance;
-
   bool get _isNew => widget.transaction == null;
   // An existing cash count stores a computed difference, so its amount is not editable.
   bool get _lockAmount => !_isNew && _kind == TransactionKind.cashCount;
@@ -83,6 +83,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
     _includeInAverage = t?.includeInAverage ?? true;
+    _isPlanned = t?.isPlanned ?? false;
     _balance = Balance.from(
       currencies: widget.currencies,
       transactions: widget.transactions,
@@ -186,6 +187,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
 
     if (_tagController.text.trim().isNotEmpty) _addTag(_tagController.text);
     final tags = _kind == TransactionKind.expense ? _tags : <String>[];
+    final isPlanned = _kind == TransactionKind.expense && _isPlanned;
 
     var amount = entered;
     if (_isNew && _kind == TransactionKind.cashCount) {
@@ -205,6 +207,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
         tags: tags,
         date: _date,
         includeInAverage: _includeInAverage,
+        isPlanned: isPlanned,
       );
     } else {
       await widget.database.updateTransactionEntry(
@@ -216,6 +219,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
           tags: tags.join(','),
           date: _date,
           includeInAverage: _includeInAverage,
+          isPlanned: isPlanned,
         ),
       );
     }
@@ -454,6 +458,14 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
               trailing: const Icon(Icons.edit_calendar),
               onTap: _pickDate,
             ),
+            if (_kind == TransactionKind.expense)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Planned'),
+                subtitle: const Text('Not paid yet; excluded from current balance'),
+                value: _isPlanned,
+                onChanged: (v) => setState(() => _isPlanned = v),
+              ),
             if (_kind == TransactionKind.expense)
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
