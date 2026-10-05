@@ -306,6 +306,7 @@ class _NoteListPageState extends State<NoteListPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'notes_fab',
         onPressed: () => _openNotePage(null),
         tooltip: 'Add Note',
         child: const Icon(Icons.add),

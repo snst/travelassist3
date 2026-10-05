@@ -174,6 +174,7 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'currencies_fab',
         onPressed: () => _showAddCurrencyDialog(context),
         icon: const Icon(Icons.add),
         label: const Text('Add Currency'),

@@ -66,6 +66,7 @@ class TransactionListPage extends StatelessWidget {
                 floatingActionButton: loading || currencies.isEmpty
                     ? null
                     : FloatingActionButton(
+                        heroTag: 'expenses_fab',
                         tooltip: 'Add Entry',
                         onPressed: () => _openItem(context, null, currencies, transactions),
                         child: const Icon(Icons.add),

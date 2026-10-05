@@ -292,6 +292,7 @@ class _TodoListPageState extends State<TodoListPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'todo_fab',
         onPressed: () => _openItemPage(null),
         tooltip: 'Add Item',
         child: const Icon(Icons.add),
