@@ -29,13 +29,26 @@ class Notes extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-@DriftDatabase(tables: [Currencies, TodoItems, Notes])
+@DataClassName('MoneyTransaction')
+class MoneyTransactions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get kind => integer().withDefault(const Constant(0))(); // TransactionKind.index
+  RealColumn get amount => real()();
+  TextColumn get currency => text()(); // Currency.shortName
+  TextColumn get method => text().withDefault(const Constant(''))(); // empty or 'Cash' means cash
+  TextColumn get comment => text().withDefault(const Constant(''))();
+  TextColumn get tags => text().withDefault(const Constant(''))();
+  DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get includeInAverage => boolean().withDefault(const Constant(true))();
+}
+
+@DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -49,6 +62,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 3) {
           await m.createTable(notes);
+        }
+        if (from < 4) {
+          await m.createTable(moneyTransactions);
         }
       },
     );
@@ -295,6 +311,75 @@ class AppDatabase extends _$AppDatabase {
       );
     }
   }
+
+  // --- Money Transaction Operations ---
+  Stream<List<MoneyTransaction>> watchAllTransactions() {
+    return (select(moneyTransactions)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+            (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+          ]))
+        .watch();
+  }
+
+  Future<int> addTransaction({
+    required TransactionKind kind,
+    required double amount,
+    required String currency,
+    String method = '',
+    String comment = '',
+    List<String> tags = const [],
+    DateTime? date,
+    bool includeInAverage = true,
+  }) {
+    return into(moneyTransactions).insert(
+      MoneyTransactionsCompanion.insert(
+        kind: Value(kind.index),
+        amount: amount,
+        currency: currency,
+        method: Value(method.trim()),
+        comment: Value(comment),
+        tags: Value(tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',')),
+        date: Value(date ?? DateTime.now()),
+        includeInAverage: Value(includeInAverage),
+      ),
+    );
+  }
+
+  Future<bool> updateTransactionEntry(MoneyTransaction transaction) {
+    return update(moneyTransactions).replace(transaction);
+  }
+
+  Future<int> deleteTransaction(int id) {
+    return (delete(moneyTransactions)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<int> restoreTransaction(MoneyTransaction transaction) {
+    return into(moneyTransactions).insert(transaction);
+  }
+}
+
+enum TransactionKind { expense, withdrawal, cashCount, deposit }
+
+const cashMethod = 'Cash';
+
+extension MoneyTransactionHelpers on MoneyTransaction {
+  TransactionKind get type => kind >= 0 && kind < TransactionKind.values.length
+      ? TransactionKind.values[kind]
+      : TransactionKind.expense;
+
+  bool get isExpense => type == TransactionKind.expense;
+  bool get isWithdrawal => type == TransactionKind.withdrawal;
+  bool get isCashCount => type == TransactionKind.cashCount;
+  bool get isDeposit => type == TransactionKind.deposit;
+
+  bool get isCash => method.trim().isEmpty || method == cashMethod;
+
+  List<String> get tagList => tags
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 }
 
 extension NoteHelpers on Note {

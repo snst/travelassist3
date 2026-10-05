@@ -4,6 +4,7 @@ import 'screens/calculator_page.dart';
 import 'screens/currency_settings_screen.dart';
 import 'screens/note_list_page.dart';
 import 'screens/todo_list_page.dart';
+import 'screens/transaction_list_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   late final List<Widget> _pages = [
     CalculatorPage(database: widget.database),
+    TransactionListPage(database: widget.database),
     TodoListPage(database: widget.database),
     NoteListPage(database: widget.database),
     CurrencySettingsScreen(database: widget.database),
@@ -85,6 +87,11 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: Icon(Icons.calculate_outlined),
             selectedIcon: Icon(Icons.calculate),
             label: 'Calculator',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Expenses',
           ),
           NavigationDestination(
             icon: Icon(Icons.checklist_outlined),

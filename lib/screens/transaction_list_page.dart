@@ -1,0 +1,299 @@
+import 'package:flutter/material.dart';
+import '../balance/balance.dart';
+import '../calculator/currency_value.dart';
+import '../database/database.dart';
+import '../utils/date_format.dart';
+import 'balance_view.dart';
+import 'transaction_item_page.dart';
+
+class TransactionListPage extends StatelessWidget {
+  final AppDatabase database;
+
+  const TransactionListPage({super.key, required this.database});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: StreamBuilder<List<Currency>>(
+        stream: database.watchAllCurrencies(),
+        builder: (context, currencySnapshot) {
+          return StreamBuilder<List<MoneyTransaction>>(
+            stream: database.watchAllTransactions(),
+            builder: (context, snapshot) {
+              final loading = !currencySnapshot.hasData || !snapshot.hasData;
+              final currencies = currencySnapshot.data ?? [];
+              final transactions = snapshot.data ?? [];
+
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('Expenses'),
+                  backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                  bottom: const TabBar(
+                    tabs: [
+                      Tab(icon: Icon(Icons.list), text: 'Entries'),
+                      Tab(icon: Icon(Icons.pie_chart_outline), text: 'Balance'),
+                    ],
+                  ),
+                ),
+                body: loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : currencies.isEmpty
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'No currencies available.\nPlease add currencies in Currencies first.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )
+                        : TabBarView(
+                            children: [
+                              _EntriesView(
+                                database: database,
+                                currencies: currencies,
+                                transactions: transactions,
+                              ),
+                              BalanceView(
+                                balance: Balance.from(
+                                  currencies: currencies,
+                                  transactions: transactions,
+                                ),
+                              ),
+                            ],
+                          ),
+                floatingActionButton: loading || currencies.isEmpty
+                    ? null
+                    : FloatingActionButton(
+                        tooltip: 'Add Entry',
+                        onPressed: () => _openItem(context, null, currencies, transactions),
+                        child: const Icon(Icons.add),
+                      ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _openItem(
+    BuildContext context,
+    MoneyTransaction? transaction,
+    List<Currency> currencies,
+    List<MoneyTransaction> transactions,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => TransactionItemPage(
+          database: database,
+          transaction: transaction,
+          currencies: currencies,
+          transactions: transactions,
+        ),
+      ),
+    );
+  }
+}
+
+class _EntriesView extends StatelessWidget {
+  final AppDatabase database;
+  final List<Currency> currencies;
+  final List<MoneyTransaction> transactions;
+
+  const _EntriesView({
+    required this.database,
+    required this.currencies,
+    required this.transactions,
+  });
+
+  Future<void> _delete(BuildContext context, MoneyTransaction t) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await database.deleteTransaction(t.id);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Entry deleted'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => database.restoreTransaction(t),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (transactions.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.receipt_long, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('No entries yet.', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      );
+    }
+
+    final home = Balance.homeCurrencyOf(currencies);
+    final byCode = {for (final c in currencies) c.shortName: c};
+    CurrencyValue toHome(MoneyTransaction t) =>
+        CurrencyValue(t.amount, byCode[t.currency]).convertTo(home);
+
+    // Entries are sorted newest first; flatten into day headers and entries.
+    final dayExpenses = <DateTime, CurrencyValue>{};
+    for (final t in transactions.where((t) => t.isExpense)) {
+      final day = DateTime(t.date.year, t.date.month, t.date.day);
+      dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
+    }
+
+    final rows = <Object>[];
+    DateTime? currentDay;
+    for (final t in transactions) {
+      final day = DateTime(t.date.year, t.date.month, t.date.day);
+      if (day != currentDay) {
+        currentDay = day;
+        rows.add(_DayHeader(day, dayExpenses[day] ?? CurrencyValue(0, home)));
+      }
+      rows.add(t);
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
+      itemCount: rows.length,
+      itemBuilder: (context, index) {
+        final row = rows[index];
+        if (row is _DayHeader) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formatDay(row.day),
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                if (row.expenses.value != 0)
+                  Text(
+                    row.expenses.toString(),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+              ],
+            ),
+          );
+        }
+        final t = row as MoneyTransaction;
+        return _EntryTile(
+          transaction: t,
+          home: toHome(t),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TransactionItemPage(
+                database: database,
+                transaction: t,
+                currencies: currencies,
+                transactions: transactions,
+              ),
+            ),
+          ),
+          onDelete: () => _delete(context, t),
+        );
+      },
+    );
+  }
+}
+
+class _DayHeader {
+  final DateTime day;
+  final CurrencyValue expenses;
+
+  _DayHeader(this.day, this.expenses);
+}
+
+class _EntryTile extends StatelessWidget {
+  final MoneyTransaction transaction;
+  final CurrencyValue home;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _EntryTile({
+    required this.transaction,
+    required this.home,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  String get _title {
+    switch (transaction.type) {
+      case TransactionKind.expense:
+        return transaction.tagList.isNotEmpty
+            ? transaction.tagList.map((t) => '#$t').join(' ')
+            : 'Expense';
+      case TransactionKind.withdrawal:
+        return 'Withdrawal';
+      case TransactionKind.deposit:
+        return 'Deposit';
+      case TransactionKind.cashCount:
+        return 'Cash Count';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = transaction;
+    final detailStyle = TextStyle(color: scheme.outline, fontSize: 13);
+    final isOutgoing = t.isExpense;
+    final sign = t.isCashCount && t.amount > 0 ? '+' : '';
+    final isForeign = home.currency == null || home.currencyString != t.currency;
+    final details = [
+      if (t.isExpense || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
+      if (t.comment.isNotEmpty) t.comment,
+    ].join(' · ');
+
+    return Dismissible(
+      key: ValueKey(t.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (_) => onDelete(),
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: ListTile(
+          onTap: onTap,
+          leading: CircleAvatar(
+            backgroundColor: scheme.surfaceContainerHigh,
+            child: Icon(transactionIcon(t.type)),
+          ),
+          title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: details.isEmpty
+              ? null
+              : Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$sign${home.toString()}',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isOutgoing ? scheme.error : null,
+                ),
+              ),
+              if (isForeign)
+                Text('$sign${t.amount.toStringAsFixed(2)} ${t.currency}', style: detailStyle),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

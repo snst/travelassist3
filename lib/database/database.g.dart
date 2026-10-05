@@ -1109,12 +1109,551 @@ class NotesCompanion extends UpdateCompanion<Note> {
   }
 }
 
+class $MoneyTransactionsTable extends MoneyTransactions
+    with TableInfo<$MoneyTransactionsTable, MoneyTransaction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MoneyTransactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<int> kind = GeneratedColumn<int>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _methodMeta = const VerificationMeta('method');
+  @override
+  late final GeneratedColumn<String> method = GeneratedColumn<String>(
+    'method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _commentMeta = const VerificationMeta(
+    'comment',
+  );
+  @override
+  late final GeneratedColumn<String> comment = GeneratedColumn<String>(
+    'comment',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _tagsMeta = const VerificationMeta('tags');
+  @override
+  late final GeneratedColumn<String> tags = GeneratedColumn<String>(
+    'tags',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _includeInAverageMeta = const VerificationMeta(
+    'includeInAverage',
+  );
+  @override
+  late final GeneratedColumn<bool> includeInAverage = GeneratedColumn<bool>(
+    'include_in_average',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("include_in_average" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    kind,
+    amount,
+    currency,
+    method,
+    comment,
+    tags,
+    date,
+    includeInAverage,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'money_transactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MoneyTransaction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyMeta);
+    }
+    if (data.containsKey('method')) {
+      context.handle(
+        _methodMeta,
+        method.isAcceptableOrUnknown(data['method']!, _methodMeta),
+      );
+    }
+    if (data.containsKey('comment')) {
+      context.handle(
+        _commentMeta,
+        comment.isAcceptableOrUnknown(data['comment']!, _commentMeta),
+      );
+    }
+    if (data.containsKey('tags')) {
+      context.handle(
+        _tagsMeta,
+        tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta),
+      );
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    }
+    if (data.containsKey('include_in_average')) {
+      context.handle(
+        _includeInAverageMeta,
+        includeInAverage.isAcceptableOrUnknown(
+          data['include_in_average']!,
+          _includeInAverageMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MoneyTransaction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MoneyTransaction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}kind'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      method: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}method'],
+      )!,
+      comment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}comment'],
+      )!,
+      tags: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tags'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      includeInAverage: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}include_in_average'],
+      )!,
+    );
+  }
+
+  @override
+  $MoneyTransactionsTable createAlias(String alias) {
+    return $MoneyTransactionsTable(attachedDatabase, alias);
+  }
+}
+
+class MoneyTransaction extends DataClass
+    implements Insertable<MoneyTransaction> {
+  final int id;
+  final int kind;
+  final double amount;
+  final String currency;
+  final String method;
+  final String comment;
+  final String tags;
+  final DateTime date;
+  final bool includeInAverage;
+  const MoneyTransaction({
+    required this.id,
+    required this.kind,
+    required this.amount,
+    required this.currency,
+    required this.method,
+    required this.comment,
+    required this.tags,
+    required this.date,
+    required this.includeInAverage,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['kind'] = Variable<int>(kind);
+    map['amount'] = Variable<double>(amount);
+    map['currency'] = Variable<String>(currency);
+    map['method'] = Variable<String>(method);
+    map['comment'] = Variable<String>(comment);
+    map['tags'] = Variable<String>(tags);
+    map['date'] = Variable<DateTime>(date);
+    map['include_in_average'] = Variable<bool>(includeInAverage);
+    return map;
+  }
+
+  MoneyTransactionsCompanion toCompanion(bool nullToAbsent) {
+    return MoneyTransactionsCompanion(
+      id: Value(id),
+      kind: Value(kind),
+      amount: Value(amount),
+      currency: Value(currency),
+      method: Value(method),
+      comment: Value(comment),
+      tags: Value(tags),
+      date: Value(date),
+      includeInAverage: Value(includeInAverage),
+    );
+  }
+
+  factory MoneyTransaction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MoneyTransaction(
+      id: serializer.fromJson<int>(json['id']),
+      kind: serializer.fromJson<int>(json['kind']),
+      amount: serializer.fromJson<double>(json['amount']),
+      currency: serializer.fromJson<String>(json['currency']),
+      method: serializer.fromJson<String>(json['method']),
+      comment: serializer.fromJson<String>(json['comment']),
+      tags: serializer.fromJson<String>(json['tags']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      includeInAverage: serializer.fromJson<bool>(json['includeInAverage']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'kind': serializer.toJson<int>(kind),
+      'amount': serializer.toJson<double>(amount),
+      'currency': serializer.toJson<String>(currency),
+      'method': serializer.toJson<String>(method),
+      'comment': serializer.toJson<String>(comment),
+      'tags': serializer.toJson<String>(tags),
+      'date': serializer.toJson<DateTime>(date),
+      'includeInAverage': serializer.toJson<bool>(includeInAverage),
+    };
+  }
+
+  MoneyTransaction copyWith({
+    int? id,
+    int? kind,
+    double? amount,
+    String? currency,
+    String? method,
+    String? comment,
+    String? tags,
+    DateTime? date,
+    bool? includeInAverage,
+  }) => MoneyTransaction(
+    id: id ?? this.id,
+    kind: kind ?? this.kind,
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    method: method ?? this.method,
+    comment: comment ?? this.comment,
+    tags: tags ?? this.tags,
+    date: date ?? this.date,
+    includeInAverage: includeInAverage ?? this.includeInAverage,
+  );
+  MoneyTransaction copyWithCompanion(MoneyTransactionsCompanion data) {
+    return MoneyTransaction(
+      id: data.id.present ? data.id.value : this.id,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      method: data.method.present ? data.method.value : this.method,
+      comment: data.comment.present ? data.comment.value : this.comment,
+      tags: data.tags.present ? data.tags.value : this.tags,
+      date: data.date.present ? data.date.value : this.date,
+      includeInAverage: data.includeInAverage.present
+          ? data.includeInAverage.value
+          : this.includeInAverage,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MoneyTransaction(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('method: $method, ')
+          ..write('comment: $comment, ')
+          ..write('tags: $tags, ')
+          ..write('date: $date, ')
+          ..write('includeInAverage: $includeInAverage')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    kind,
+    amount,
+    currency,
+    method,
+    comment,
+    tags,
+    date,
+    includeInAverage,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MoneyTransaction &&
+          other.id == this.id &&
+          other.kind == this.kind &&
+          other.amount == this.amount &&
+          other.currency == this.currency &&
+          other.method == this.method &&
+          other.comment == this.comment &&
+          other.tags == this.tags &&
+          other.date == this.date &&
+          other.includeInAverage == this.includeInAverage);
+}
+
+class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
+  final Value<int> id;
+  final Value<int> kind;
+  final Value<double> amount;
+  final Value<String> currency;
+  final Value<String> method;
+  final Value<String> comment;
+  final Value<String> tags;
+  final Value<DateTime> date;
+  final Value<bool> includeInAverage;
+  const MoneyTransactionsCompanion({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.method = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.tags = const Value.absent(),
+    this.date = const Value.absent(),
+    this.includeInAverage = const Value.absent(),
+  });
+  MoneyTransactionsCompanion.insert({
+    this.id = const Value.absent(),
+    this.kind = const Value.absent(),
+    required double amount,
+    required String currency,
+    this.method = const Value.absent(),
+    this.comment = const Value.absent(),
+    this.tags = const Value.absent(),
+    this.date = const Value.absent(),
+    this.includeInAverage = const Value.absent(),
+  }) : amount = Value(amount),
+       currency = Value(currency);
+  static Insertable<MoneyTransaction> custom({
+    Expression<int>? id,
+    Expression<int>? kind,
+    Expression<double>? amount,
+    Expression<String>? currency,
+    Expression<String>? method,
+    Expression<String>? comment,
+    Expression<String>? tags,
+    Expression<DateTime>? date,
+    Expression<bool>? includeInAverage,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (kind != null) 'kind': kind,
+      if (amount != null) 'amount': amount,
+      if (currency != null) 'currency': currency,
+      if (method != null) 'method': method,
+      if (comment != null) 'comment': comment,
+      if (tags != null) 'tags': tags,
+      if (date != null) 'date': date,
+      if (includeInAverage != null) 'include_in_average': includeInAverage,
+    });
+  }
+
+  MoneyTransactionsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? kind,
+    Value<double>? amount,
+    Value<String>? currency,
+    Value<String>? method,
+    Value<String>? comment,
+    Value<String>? tags,
+    Value<DateTime>? date,
+    Value<bool>? includeInAverage,
+  }) {
+    return MoneyTransactionsCompanion(
+      id: id ?? this.id,
+      kind: kind ?? this.kind,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      method: method ?? this.method,
+      comment: comment ?? this.comment,
+      tags: tags ?? this.tags,
+      date: date ?? this.date,
+      includeInAverage: includeInAverage ?? this.includeInAverage,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<int>(kind.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (method.present) {
+      map['method'] = Variable<String>(method.value);
+    }
+    if (comment.present) {
+      map['comment'] = Variable<String>(comment.value);
+    }
+    if (tags.present) {
+      map['tags'] = Variable<String>(tags.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (includeInAverage.present) {
+      map['include_in_average'] = Variable<bool>(includeInAverage.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MoneyTransactionsCompanion(')
+          ..write('id: $id, ')
+          ..write('kind: $kind, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('method: $method, ')
+          ..write('comment: $comment, ')
+          ..write('tags: $tags, ')
+          ..write('date: $date, ')
+          ..write('includeInAverage: $includeInAverage')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CurrenciesTable currencies = $CurrenciesTable(this);
   late final $TodoItemsTable todoItems = $TodoItemsTable(this);
   late final $NotesTable notes = $NotesTable(this);
+  late final $MoneyTransactionsTable moneyTransactions =
+      $MoneyTransactionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1123,6 +1662,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     currencies,
     todoItems,
     notes,
+    moneyTransactions,
   ];
 }
 
