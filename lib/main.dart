@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'database/database.dart';
+import 'screens/balance_page.dart';
 import 'screens/calculator_page.dart';
 import 'screens/currency_settings_screen.dart';
 import 'screens/note_list_page.dart';
@@ -69,6 +70,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late final List<Widget> _pages = [
     CalculatorPage(database: widget.database),
     TransactionListPage(database: widget.database),
+    BalancePage(database: widget.database),
     TodoListPage(database: widget.database),
     NoteListPage(database: widget.database),
     CurrencySettingsScreen(database: widget.database),
@@ -91,7 +93,12 @@ class _MyHomePageState extends State<MyHomePage> {
           NavigationDestination(
             icon: Icon(Icons.account_balance_wallet_outlined),
             selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Expenses',
+            label: 'Entries',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.pie_chart_outline),
+            selectedIcon: Icon(Icons.pie_chart),
+            label: 'Balance',
           ),
           NavigationDestination(
             icon: Icon(Icons.checklist_outlined),

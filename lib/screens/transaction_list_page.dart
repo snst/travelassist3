@@ -3,7 +3,6 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
-import 'balance_view.dart';
 import 'transaction_item_page.dart';
 
 class TransactionListPage extends StatelessWidget {
@@ -13,69 +12,50 @@ class TransactionListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: StreamBuilder<List<Currency>>(
-        stream: database.watchAllCurrencies(),
-        builder: (context, currencySnapshot) {
-          return StreamBuilder<List<MoneyTransaction>>(
-            stream: database.watchAllTransactions(),
-            builder: (context, snapshot) {
-              final loading = !currencySnapshot.hasData || !snapshot.hasData;
-              final currencies = currencySnapshot.data ?? [];
-              final transactions = snapshot.data ?? [];
+    return StreamBuilder<List<Currency>>(
+      stream: database.watchAllCurrencies(),
+      builder: (context, currencySnapshot) {
+        return StreamBuilder<List<MoneyTransaction>>(
+          stream: database.watchAllTransactions(),
+          builder: (context, snapshot) {
+            final loading = !currencySnapshot.hasData || !snapshot.hasData;
+            final currencies = currencySnapshot.data ?? [];
+            final transactions = snapshot.data ?? [];
 
-              return Scaffold(
-                appBar: AppBar(
-                  title: const Text('Expenses'),
-                  backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-                  bottom: const TabBar(
-                    tabs: [
-                      Tab(icon: Icon(Icons.list), text: 'Entries'),
-                      Tab(icon: Icon(Icons.pie_chart_outline), text: 'Balance'),
-                    ],
-                  ),
-                ),
-                body: loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : currencies.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(24),
-                              child: Text(
-                                'No currencies available.\nPlease add currencies in Currencies first.',
-                                textAlign: TextAlign.center,
-                              ),
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Entries'),
+                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+              ),
+              body: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : currencies.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text(
+                              'No currencies available.\nPlease add currencies in Currencies first.',
+                              textAlign: TextAlign.center,
                             ),
-                          )
-                        : TabBarView(
-                            children: [
-                              _EntriesView(
-                                database: database,
-                                currencies: currencies,
-                                transactions: transactions,
-                              ),
-                              BalanceView(
-                                balance: Balance.from(
-                                  currencies: currencies,
-                                  transactions: transactions,
-                                ),
-                              ),
-                            ],
                           ),
-                floatingActionButton: loading || currencies.isEmpty
-                    ? null
-                    : FloatingActionButton(
-                        heroTag: 'expenses_fab',
-                        tooltip: 'Add Entry',
-                        onPressed: () => _openItem(context, null, currencies, transactions),
-                        child: const Icon(Icons.add),
-                      ),
-              );
-            },
-          );
-        },
-      ),
+                        )
+                      : _EntriesView(
+                          database: database,
+                          currencies: currencies,
+                          transactions: transactions,
+                        ),
+              floatingActionButton: loading || currencies.isEmpty
+                  ? null
+                  : FloatingActionButton(
+                      heroTag: 'expenses_fab',
+                      tooltip: 'Add Entry',
+                      onPressed: () => _openItem(context, null, currencies, transactions),
+                      child: const Icon(Icons.add),
+                    ),
+            );
+          },
+        );
+      },
     );
   }
 
