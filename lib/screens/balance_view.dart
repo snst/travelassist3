@@ -106,7 +106,7 @@ class BalanceView extends StatelessWidget {
       if (value.value == 0) continue;
       lines.add(
         _Line(
-          native: isHome ? null : _nativeText(entry.key, value),
+          native: _nativeText(entry.key, value),
           home: _homeText(value.convertTo(balance.home)),
         ),
       );
