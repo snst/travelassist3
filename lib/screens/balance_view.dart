@@ -102,7 +102,6 @@ class BalanceView extends StatelessWidget {
     final lines = <Widget>[];
     for (final entry in _sorted(totals.byCurrency)) {
       final value = entry.value;
-      final isHome = balance.home != null && value.currency?.id == balance.home!.id;
       if (value.value == 0) continue;
       lines.add(
         _Line(

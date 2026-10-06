@@ -48,6 +48,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   void _onCalculatorChanged() {
+    setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
