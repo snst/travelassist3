@@ -98,8 +98,11 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
             : _balance.home?.shortName ?? '');
 
     _methodController = TextEditingController(
-      text: t != null ? t.method : _defaultMethod(_kind),
+      text: t != null ? t.method : '',
     );
+    if (t == null) {
+      _methodController.text = _defaultMethod(_kind);
+    }
   }
 
   @override
@@ -109,6 +112,51 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     _commentController.dispose();
     _tagController.dispose();
     super.dispose();
+  }
+
+  void _showAddPaymentMethodDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Payment Method'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Credit Card, PayPal, Revolut',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            final trimmed = value.trim();
+            if (trimmed.isNotEmpty) {
+              setState(() {
+                _methodController.text = trimmed;
+              });
+              Navigator.of(context).pop();
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final trimmed = controller.text.trim();
+              if (trimmed.isNotEmpty) {
+                setState(() {
+                  _methodController.text = trimmed;
+                });
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Payment methods used before for [kind], most frequent first.
@@ -121,6 +169,12 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
       }
     }
     if (kind == TransactionKind.expense) counts.putIfAbsent(cashMethod, () => 0);
+
+    final current = _methodController.text.trim();
+    if (current.isNotEmpty && !counts.containsKey(current)) {
+      counts[current] = 999;
+    }
+
     return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
   }
 
@@ -269,9 +323,23 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
       children: [
         for (final kind in TransactionKind.values)
           ChoiceChip(
-            avatar: Icon(transactionIcon(kind), size: 18),
+            avatar: Icon(
+              transactionIcon(kind),
+              size: 18,
+              color: _kind == kind
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : null,
+            ),
             label: Text(transactionLabel(kind)),
             selected: _kind == kind,
+            showCheckmark: false,
+            selectedColor: Theme.of(context).colorScheme.primary,
+            labelStyle: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _kind == kind
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : null,
+            ),
             onSelected: (_) => _setKind(kind),
           ),
       ],
@@ -309,7 +377,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'Add Entry' : 'Edit Entry'),
+        title: Text(_isNew ? 'Add Entry' : 'Edit ${transactionLabel(_kind)}'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           if (!_isNew)
@@ -325,73 +393,109 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildKindSelector(),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _amountController,
-              readOnly: _lockAmount,
-              autofocus: _isNew,
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 24),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(_lockAmount ? r'[0-9.,-]' : r'[0-9.,]')),
-              ],
-              decoration: InputDecoration(
-                labelText: _kind == TransactionKind.cashCount
-                    ? (_isNew ? 'Counted cash' : 'Correction')
-                    : 'Amount',
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (_) => setState(() {}),
-              validator: (value) {
-                if (_lockAmount) return null;
-                if ((value ?? '').trim().isEmpty) return 'Please enter an amount';
-                final v = CurrencyValue.safeConvertToDouble(value!);
-                if (_kind != TransactionKind.cashCount && v <= 0) {
-                  return 'Amount must be greater than 0';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
+            if (_isNew) ...[
+              _buildKindSelector(),
+              const SizedBox(height: 16),
+            ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final code in codes)
-                  ChoiceChip(
-                    label: Text(code),
-                    selected: _currencyCode == code,
-                    onSelected: _lockAmount
-                        ? null
-                        : (_) => setState(() => _currencyCode = code),
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      for (final code in codes)
+                        ChoiceChip(
+                          label: Text(code),
+                          selected: _currencyCode == code,
+                          showCheckmark: false,
+                          selectedColor: Theme.of(context).colorScheme.primary,
+                          labelStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _currencyCode == code
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : null,
+                          ),
+                          onSelected: _lockAmount
+                              ? null
+                              : (_) => setState(() => _currencyCode = code),
+                        ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 240,
+                  child: TextFormField(
+                    controller: _amountController,
+                    readOnly: _lockAmount,
+                    autofocus: _isNew,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontSize: 24),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(_lockAmount ? r'[0-9.,-]' : r'[0-9.,]')),
+                    ],
+                    decoration: InputDecoration(
+                      labelText: _kind == TransactionKind.cashCount
+                          ? (_isNew ? 'Counted cash' : 'Correction')
+                          : 'Amount',
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    validator: (value) {
+                      if (_lockAmount) return null;
+                      if ((value ?? '').trim().isEmpty) return 'Please enter an amount';
+                      final v = CurrencyValue.safeConvertToDouble(value!);
+                      if (_kind != TransactionKind.cashCount && v <= 0) {
+                        return 'Amount must be greater than 0';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
               ],
             ),
+            //const SizedBox(height: 12),
+
             if (_isNew && _kind == TransactionKind.cashCount) _buildCashCountHint(),
             if (_usesMethod) ...[
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _methodController,
-                decoration: InputDecoration(
-                  labelText: _kind == TransactionKind.expense
-                      ? 'Payment method'
-                      : 'Withdrawn with',
-                  hintText: _kind == TransactionKind.expense ? 'Cash or card name' : 'Card name',
-                  border: const OutlineInputBorder(),
-                ),
+              //const SizedBox(height: 20),
+              const Text(
+                'Payment method',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   for (final method in _methodSuggestions(_kind))
                     ActionChip(
-                      label: Text(method),
+                      backgroundColor: _methodController.text == method
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                      label: Text(
+                        method,
+                        style: TextStyle(
+                          fontWeight: _methodController.text == method
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _methodController.text == method
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : null,
+                        ),
+                      ),
                       onPressed: () => setState(() => _methodController.text = method),
                     ),
+                  ActionChip(
+                    avatar: const Icon(Icons.more_horiz, size: 18),
+                    label: const Text(''),
+                    onPressed: _showAddPaymentMethodDialog,
+                  ),
                 ],
               ),
             ],

@@ -3,6 +3,7 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
+import 'balance_page.dart';
 import 'transaction_item_page.dart';
 
 class TransactionListPage extends StatelessWidget {
@@ -26,6 +27,19 @@ class TransactionListPage extends StatelessWidget {
               appBar: AppBar(
                 title: const Text('Entries'),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.pie_chart),
+                    tooltip: 'View Balance',
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => BalancePage(database: database),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
               body: loading
                   ? const Center(child: CircularProgressIndicator())

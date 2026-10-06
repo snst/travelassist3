@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/open.dart';
 import 'package:travelassist3/database/database.dart';
-import 'package:travelassist3/main.dart';
+import 'package:travelassist3/screens/home_page.dart';
 
 void main() {
   setUpAll(() {
@@ -13,26 +13,30 @@ void main() {
     });
   });
 
-  testWidgets('Home page switches between features via the navigation bar',
+  testWidgets('Home dashboard opens features and navigates back',
       (WidgetTester tester) async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     await database.seedInitialCurrenciesIfEmpty();
 
     await tester.pumpWidget(
       MaterialApp(
-        home: MyHomePage(title: 'Travel Assist', database: database),
+        home: HomePage(title: 'Travel Assist', database: database),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Currency Calculator'), findsOneWidget);
+    expect(find.text('Calculator'), findsOneWidget);
+    expect(find.text('Currencies'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.currency_exchange_outlined));
+    await tester.tap(find.text('Currencies'));
     await tester.pumpAndSettle();
 
     expect(find.text('Add Currency'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.calculate_outlined));
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Calculator'));
     await tester.pumpAndSettle();
 
     expect(find.text('Currency Calculator'), findsOneWidget);

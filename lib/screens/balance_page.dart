@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../balance/balance.dart';
 import '../database/database.dart';
 import 'balance_view.dart';
+import 'transaction_list_page.dart';
 
 class BalancePage extends StatelessWidget {
   final AppDatabase database;
@@ -24,6 +25,19 @@ class BalancePage extends StatelessWidget {
               appBar: AppBar(
                 title: const Text('Balance'),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.receipt_long),
+                    tooltip: 'View Entries',
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => TransactionListPage(database: database),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
               body: loading
                   ? const Center(child: CircularProgressIndicator())
