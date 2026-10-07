@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../database/database.dart';
 import 'note_actions.dart';
 
@@ -75,6 +76,58 @@ class _NoteItemPageState extends State<NoteItemPage> {
     setState(() {
       _tags.remove(tag);
     });
+  }
+
+  Future<void> _attachCurrentGpsLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location services are disabled.')),
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are denied.')),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permissions are permanently denied.')),
+        );
+        return;
+      }
+
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('Fetching current GPS location...'), duration: Duration(seconds: 1)),
+      );
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _linkController.text = 'geo:${position.latitude},${position.longitude}';
+      });
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('GPS location attached!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get location: $e')),
+      );
+    }
   }
 
   void _showLargeDisplayDialog() {
@@ -234,11 +287,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _linkController.text = 'geo:41.9028,12.4964'; // Rome sample geo
-                  });
-                },
+                onPressed: _attachCurrentGpsLocation,
                 icon: const Icon(Icons.my_location),
                 label: const Text('Attach Current GPS Location'),
               ),
