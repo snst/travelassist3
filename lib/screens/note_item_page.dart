@@ -23,7 +23,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _commentController;
   late final TextEditingController _linkController;
-  late final TextEditingController _tagInputController;
+  TextEditingController? _tagInputController;
 
   late List<String> _tags;
   List<String> _availableTags = [];
@@ -34,7 +34,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
     final note = widget.note;
     _commentController = TextEditingController(text: note?.comment ?? '');
     _linkController = TextEditingController(text: note?.link ?? '');
-    _tagInputController = TextEditingController();
 
     if (note != null) {
       _tags = note.tagList;
@@ -58,7 +57,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
   void dispose() {
     _commentController.dispose();
     _linkController.dispose();
-    _tagInputController.dispose();
     super.dispose();
   }
 
@@ -67,7 +65,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
     if (trimmed.isNotEmpty && !_tags.contains(trimmed)) {
       setState(() {
         _tags.add(trimmed);
-        _tagInputController.clear();
       });
     }
   }
@@ -79,55 +76,52 @@ class _NoteItemPageState extends State<NoteItemPage> {
   }
 
   Future<void> _attachCurrentGpsLocation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location services are disabled.')),
-        );
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location permissions are denied.')),
-          );
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permissions are permanently denied.')),
-        );
-        return;
-      }
-
-      final scaffoldMessenger = ScaffoldMessenger.of(context);
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Fetching current GPS location...'), duration: Duration(seconds: 1)),
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!mounted) return;
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location services are disabled.')),
       );
+      return;
+    }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (!mounted) return;
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
       if (!mounted) return;
-      setState(() {
-        _linkController.text = 'geo:${position.latitude},${position.longitude}';
-      });
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('GPS location attached!')),
-      );
-    } catch (e) {
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permissions are denied.')),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get location: $e')),
+        const SnackBar(content: Text('Location permissions are permanently denied.')),
       );
+      return;
     }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Fetching current GPS location...'), duration: Duration(seconds: 1)),
+    );
+
+    Position position = await Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _linkController.text = 'geo:${position.latitude},${position.longitude}';
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('GPS location attached!')),
+    );
   }
 
   void _showLargeDisplayDialog() {
@@ -206,9 +200,18 @@ class _NoteItemPageState extends State<NoteItemPage> {
                             t.toLowerCase().contains(
                                 textValue.text.toLowerCase()));
                       },
-                      onSelected: (selection) => _addTag(selection),
+                      onSelected: (selection) {
+                        _addTag(selection);
+                        _tagInputController?.clear();
+                      },
                       fieldViewBuilder:
                           (context, controller, focusNode, onEditingComplete) {
+                        _tagInputController = controller;
+                        focusNode.addListener(() {
+                          if (focusNode.hasFocus && controller.text.isEmpty) {
+                            controller.value = controller.value;
+                          }
+                        });
                         return TextField(
                           controller: controller,
                           focusNode: focusNode,
@@ -217,6 +220,11 @@ class _NoteItemPageState extends State<NoteItemPage> {
                             isDense: true,
                             border: OutlineInputBorder(),
                           ),
+                          onTap: () {
+                            if (controller.text.isEmpty) {
+                              controller.value = controller.value;
+                            }
+                          },
                           onSubmitted: (value) {
                             _addTag(value);
                             controller.clear();
@@ -229,7 +237,10 @@ class _NoteItemPageState extends State<NoteItemPage> {
                   IconButton.filled(
                     icon: const Icon(Icons.add),
                     onPressed: () {
-                      _addTag(_tagInputController.text);
+                      if (_tagInputController != null) {
+                        _addTag(_tagInputController!.text);
+                        _tagInputController!.clear();
+                      }
                     },
                   ),
                 ],
