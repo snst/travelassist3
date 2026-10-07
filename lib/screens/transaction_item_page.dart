@@ -391,7 +391,12 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.of(context).padding.bottom,
+          ),
           children: [
             if (_isNew) ...[
               _buildKindSelector(),

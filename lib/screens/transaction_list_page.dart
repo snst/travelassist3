@@ -157,7 +157,12 @@ class _EntriesView extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        0,
+        12,
+        88 + MediaQuery.of(context).padding.bottom,
+      ),
       itemCount: rows.length,
       itemBuilder: (context, index) {
         final row = rows[index];

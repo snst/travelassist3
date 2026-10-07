@@ -74,7 +74,12 @@ class _TodoItemPageState extends State<TodoItemPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.fromLTRB(
+          16.0,
+          16.0,
+          16.0,
+          16.0 + MediaQuery.of(context).padding.bottom,
+        ),
         child: Form(
           key: _formKey,
           child: Column(

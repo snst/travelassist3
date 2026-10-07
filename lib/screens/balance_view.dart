@@ -22,7 +22,12 @@ class BalanceView extends StatelessWidget {
     final average = balance.dailyAverage;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        8,
+        12,
+        88 + MediaQuery.of(context).padding.bottom,
+      ),
       children: [
         _Section(
           title: 'Cash on hand',

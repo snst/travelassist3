@@ -197,7 +197,12 @@ class _CalculatorPageState extends State<CalculatorPage> {
                 builder: (context, child) {
                   return Container(
                     color: Theme.of(context).colorScheme.surfaceContainerLow,
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.fromLTRB(
+                      16.0,
+                      16.0,
+                      16.0,
+                      16.0 + MediaQuery.of(context).padding.bottom,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [

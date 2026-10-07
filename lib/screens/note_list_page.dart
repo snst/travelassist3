@@ -143,7 +143,12 @@ class _NoteListPageState extends State<NoteListPage> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          8,
+                          12,
+                          88 + MediaQuery.of(context).padding.bottom,
+                        ),
                         itemCount: filteredNotes.length,
                         itemBuilder: (context, index) {
                           final note = filteredNotes[index];
@@ -255,8 +260,12 @@ class _NoteListPageState extends State<NoteListPage> {
               if (sortedTags.isNotEmpty)
                 Container(
                   color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    8,
+                    12,
+                    8 + MediaQuery.of(context).padding.bottom,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
