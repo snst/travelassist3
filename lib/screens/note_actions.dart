@@ -58,6 +58,12 @@ Future<void> showNoteDialog(
   required String comment,
   required String link,
 }) {
+  final links = link
+      .split('\t')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -79,16 +85,37 @@ Future<void> showNoteDialog(
               ),
               const SizedBox(height: 16),
             ],
-            if (link.isNotEmpty) ...[
-              const Text(
-                'Link / Location:',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+            if (links.isNotEmpty) ...[
+              Text(
+                links.length > 1 ? 'Links / Locations:' : 'Link / Location:',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 4),
-              SelectableText(
-                link,
-                style: const TextStyle(fontSize: 22, color: Colors.blueAccent),
-              ),
+              for (final l in links) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          l,
+                          style: const TextStyle(fontSize: 20, color: Colors.blueAccent),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        tooltip: 'Copy Link',
+                        onPressed: () => copyNoteText(context, l, 'Link'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.open_in_new),
+                        tooltip: 'Open Link',
+                        onPressed: () => openNoteLink(context, l),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -100,11 +127,11 @@ Future<void> showNoteDialog(
             tooltip: 'Copy Note',
             onPressed: () => copyNoteText(context, comment, 'Note'),
           ),
-        if (link.isNotEmpty)
+        if (links.length == 1)
           IconButton(
             icon: const Icon(Icons.open_in_new),
             tooltip: 'Open Link',
-            onPressed: () => openNoteLink(context, link),
+            onPressed: () => openNoteLink(context, links.first),
           ),
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),

@@ -395,22 +395,45 @@ extension NoteHelpers on Note {
       .where((e) => e.isNotEmpty)
       .toList();
 
-  bool get isLink =>
-      link.toLowerCase().startsWith('http://') ||
-      link.toLowerCase().startsWith('https://');
+  List<String> get linkList => link
+      .split('\t')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 
-  bool get isGeo => link.toLowerCase().startsWith('geo:');
+  bool get isLink => linkList.any((l) =>
+      l.toLowerCase().startsWith('http://') ||
+      l.toLowerCase().startsWith('https://'));
 
-  bool get isFile => link.startsWith('/');
+  bool get isGeo => linkList.any((l) => l.toLowerCase().startsWith('geo:'));
 
-  String shortLink() {
-    if (link.startsWith('https://')) {
-      return link.substring(8);
-    } else if (link.startsWith('http://')) {
-      return link.substring(7);
-    } else if (link.length > 30) {
-      return '...${link.substring(link.length - 25)}';
+  bool get isFile => linkList.any((l) => l.startsWith('/'));
+
+  String shortLink([int index = 0]) {
+    final links = linkList;
+    if (links.isEmpty) return '';
+    final l = (index >= 0 && index < links.length) ? links[index] : links.first;
+    if (l.startsWith('https://')) {
+      return l.substring(8);
+    } else if (l.startsWith('http://')) {
+      return l.substring(7);
+    } else if (l.length > 30) {
+      return '...${l.substring(l.length - 25)}';
     }
-    return link;
+    return l;
+  }
+
+  String linksSummary() {
+    final links = linkList;
+    if (links.isEmpty) return '';
+    if (links.length == 1) return shortLink(0);
+    return '${links.length} links: ${links.map((l) => _formatShortLink(l)).join(', ')}';
+  }
+
+  static String _formatShortLink(String l) {
+    if (l.startsWith('https://')) return l.substring(8);
+    if (l.startsWith('http://')) return l.substring(7);
+    if (l.length > 25) return '...${l.substring(l.length - 20)}';
+    return l;
   }
 }

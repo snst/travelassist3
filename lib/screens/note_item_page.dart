@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../database/database.dart';
 import 'note_actions.dart';
@@ -22,7 +23,7 @@ class NoteItemPage extends StatefulWidget {
 class _NoteItemPageState extends State<NoteItemPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _commentController;
-  late final TextEditingController _linkController;
+  final List<TextEditingController> _linkControllers = [];
   TextEditingController? _tagInputController;
 
   late List<String> _tags;
@@ -33,7 +34,15 @@ class _NoteItemPageState extends State<NoteItemPage> {
     super.initState();
     final note = widget.note;
     _commentController = TextEditingController(text: note?.comment ?? '');
-    _linkController = TextEditingController(text: note?.link ?? '');
+
+    final initialLinks = note?.linkList ?? [];
+    if (initialLinks.isNotEmpty) {
+      for (final link in initialLinks) {
+        _linkControllers.add(TextEditingController(text: link));
+      }
+    } else {
+      _linkControllers.add(TextEditingController());
+    }
 
     if (note != null) {
       _tags = note.tagList;
@@ -56,7 +65,9 @@ class _NoteItemPageState extends State<NoteItemPage> {
   @override
   void dispose() {
     _commentController.dispose();
-    _linkController.dispose();
+    for (final controller in _linkControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -73,6 +84,93 @@ class _NoteItemPageState extends State<NoteItemPage> {
     setState(() {
       _tags.remove(tag);
     });
+  }
+
+  void _addLink([String text = '']) {
+    setState(() {
+      _linkControllers.add(TextEditingController(text: text));
+    });
+  }
+
+  void _removeLink(int index) {
+    setState(() {
+      final controller = _linkControllers.removeAt(index);
+      controller.dispose();
+    });
+  }
+
+  Future<void> _confirmDeleteLink(int index) async {
+    final linkText = _linkControllers[index].text.trim();
+    if (linkText.isEmpty) {
+      _removeLink(index);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Link'),
+        content: Text(
+          'Are you sure you want to delete this link?\n\n$linkText',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      _removeLink(index);
+    }
+  }
+
+  Future<void> _addLinkFromClipboard() async {
+    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = clipboardData?.text?.trim() ?? '';
+    if (!mounted) return;
+
+    if (text.isNotEmpty) {
+      final newLinks = text
+          .split(RegExp(r'[\t\r\n]+'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      if (newLinks.isNotEmpty) {
+        setState(() {
+          for (final linkText in newLinks) {
+            final emptyIndex =
+                _linkControllers.indexWhere((c) => c.text.trim().isEmpty);
+            if (emptyIndex != -1) {
+              _linkControllers[emptyIndex].text = linkText;
+            } else {
+              _linkControllers.add(TextEditingController(text: linkText));
+            }
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${newLinks.length} ${newLinks.length == 1 ? 'link' : 'links'} added from clipboard!',
+            ),
+          ),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Clipboard is empty or contains no text.'),
+        ),
+      );
+    }
   }
 
   Future<void> _attachCurrentGpsLocation() async {
@@ -108,7 +206,10 @@ class _NoteItemPageState extends State<NoteItemPage> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fetching current GPS location...'), duration: Duration(seconds: 1)),
+      const SnackBar(
+        content: Text('Fetching current GPS location...'),
+        duration: Duration(seconds: 1),
+      ),
     );
 
     Position position = await Geolocator.getCurrentPosition(
@@ -116,19 +217,33 @@ class _NoteItemPageState extends State<NoteItemPage> {
     );
 
     if (!mounted) return;
+    final geoString = 'geo:${position.latitude},${position.longitude}';
     setState(() {
-      _linkController.text = 'geo:${position.latitude},${position.longitude}';
+      final emptyIndex =
+          _linkControllers.indexWhere((c) => c.text.trim().isEmpty);
+      if (emptyIndex != -1) {
+        _linkControllers[emptyIndex].text = geoString;
+      } else {
+        _linkControllers.add(TextEditingController(text: geoString));
+      }
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('GPS location attached!')),
     );
   }
 
+  String _buildJoinedLinkString() {
+    return _linkControllers
+        .map((c) => c.text.trim())
+        .where((t) => t.isNotEmpty)
+        .join('\t');
+  }
+
   void _showLargeDisplayDialog() {
     showNoteDialog(
       context,
       comment: _commentController.text.trim(),
-      link: _linkController.text.trim(),
+      link: _buildJoinedLinkString(),
     );
   }
 
@@ -167,11 +282,11 @@ class _NoteItemPageState extends State<NoteItemPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Tags Section
-              const Text(
+              /*const Text(
                 'Tags',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 8),*/
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
@@ -259,48 +374,125 @@ class _NoteItemPageState extends State<NoteItemPage> {
                   alignLabelWithHint: true,
                 ),
                 validator: (value) {
-                  if ((value == null || value.trim().isEmpty) &&
-                      _linkController.text.trim().isEmpty) {
-                    return 'Please enter a note or link';
+                  final commentText = value?.trim() ?? '';
+                  final hasLinks =
+                      _linkControllers.any((c) => c.text.trim().isNotEmpty);
+                  if (commentText.isEmpty && !hasLinks) {
+                    return 'Please enter a note or at least one link';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
 
-              // Link Section
-              Row(
+              // Links Section
+             /* Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _linkController,
-                      decoration: const InputDecoration(
-                        labelText: 'Link / Location (optional)',
-                        hintText: 'https://... or geo:lat,lng',
-                        border: OutlineInputBorder(),
-                      ),
+                  const Text(
+                    'Links / Locations',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    '${_linkControllers.length} ${_linkControllers.length == 1 ? 'link' : 'links'}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.outlined(
-                    icon: const Icon(Icons.open_in_new),
-                    tooltip: 'Open Link',
-                    onPressed: () =>
-                        openNoteLink(context, _linkController.text),
-                  ),
-                  IconButton.outlined(
-                    icon: const Icon(Icons.copy),
-                    tooltip: 'Copy Link',
-                    onPressed: () =>
-                        copyNoteText(context, _linkController.text, 'Link'),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),*/
+
+              if (_linkControllers.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'No links added yet.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _linkControllers.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final controller = _linkControllers[index];
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: controller,
+                            decoration: InputDecoration(
+                              labelText: 'Link ${index + 1}',
+                              hintText: 'https://... or geo:lat,lng',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.open_in_new),
+                          tooltip: 'Open Link',
+                          onPressed: () =>
+                              openNoteLink(context, controller.text),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.copy),
+                          tooltip: 'Copy Link',
+                          onPressed: () => copyNoteText(
+                            context,
+                            controller.text,
+                            'Link',
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          tooltip: 'Remove Link',
+                          onPressed: () => _confirmDeleteLink(index),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _attachCurrentGpsLocation,
-                icon: const Icon(Icons.my_location),
-                label: const Text('Attach Current GPS Location'),
+
+              // Link Action Buttons
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _addLinkFromClipboard,
+                    icon: const Icon(Icons.assignment_turned_in_outlined),
+                    label: const Text('Paste'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _addLink(),
+                    icon: const Icon(Icons.add_link),
+                    label: const Text('New'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _attachCurrentGpsLocation,
+                    icon: const Icon(Icons.my_location),
+                    label: const Text('GPS'),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -314,7 +506,10 @@ class _NoteItemPageState extends State<NoteItemPage> {
                 icon: const Icon(Icons.save),
                 label: Text(
                   isNew ? 'Save Note' : 'Update Note',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -327,7 +522,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
   Future<void> _saveNote() async {
     if (_formKey.currentState!.validate()) {
       final comment = _commentController.text.trim();
-      final link = _linkController.text.trim();
+      final link = _buildJoinedLinkString();
 
       if (widget.note == null) {
         await widget.database.addNote(

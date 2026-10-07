@@ -58,10 +58,13 @@ class _NoteListPageState extends State<NoteListPage> {
   }
 
   void _openNote(Note note) {
-    if (note.link.isEmpty) {
+    final links = note.linkList;
+    if (links.isEmpty) {
       showNoteDialog(context, comment: note.comment, link: note.link);
+    } else if (links.length == 1) {
+      openNoteLink(context, links.first);
     } else {
-      openNoteLink(context, note.link);
+      showNoteDialog(context, comment: note.comment, link: note.link);
     }
   }
 
@@ -187,11 +190,11 @@ class _NoteListPageState extends State<NoteListPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   if (note.comment.isNotEmpty &&
-                                      note.link.isNotEmpty)
+                                      note.linkList.isNotEmpty)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 2.0),
                                       child: Text(
-                                        note.shortLink(),
+                                        note.linksSummary(),
                                         style: const TextStyle(
                                             fontSize: 12, color: Colors.blueAccent),
                                         maxLines: 1,
@@ -244,11 +247,16 @@ class _NoteListPageState extends State<NoteListPage> {
                                 ],
                               ),
                               trailing: IconButton(
-                                icon: Icon(note.link.isNotEmpty
-                                    ? Icons.open_in_new
+                                icon: Icon(note.linkList.isNotEmpty
+                                    ? (note.linkList.length == 1
+                                        ? Icons.open_in_new
+                                        : Icons.list_alt)
                                     : Icons.visibility_outlined),
-                                tooltip:
-                                    note.link.isNotEmpty ? 'Open Link' : 'View',
+                                tooltip: note.linkList.isNotEmpty
+                                    ? (note.linkList.length == 1
+                                        ? 'Open Link'
+                                        : 'View Links')
+                                    : 'View',
                                 onPressed: () => _openNote(note),
                               ),
                             ),
