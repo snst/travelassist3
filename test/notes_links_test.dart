@@ -98,5 +98,39 @@ void main() {
       expect(find.text('https://link1.com'), findsNothing);
       expect(find.text('https://link2.com'), findsOneWidget);
     });
+
+    testWidgets('tag suggestions reopen after selecting a tag', (WidgetTester tester) async {
+      await database.addNote(
+        comment: 'Known tags',
+        tags: ['flight', 'hotel'],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NoteItemPage(database: database),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final tagField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText ==
+                'Add tag (e.g. hotel, map, important)',
+      );
+
+      await tester.tap(tagField);
+      await tester.pumpAndSettle();
+      expect(find.text('hotel'), findsOneWidget);
+
+      await tester.tap(find.text('hotel'));
+      await tester.pumpAndSettle();
+      expect(find.text('#hotel'), findsOneWidget);
+      expect(tester.widget<TextField>(tagField).controller!.text, isEmpty);
+
+      await tester.tap(tagField);
+      await tester.pumpAndSettle();
+      expect(find.text('flight'), findsOneWidget);
+    });
   });
 }

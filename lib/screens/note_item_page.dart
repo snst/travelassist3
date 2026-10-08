@@ -86,6 +86,15 @@ class _NoteItemPageState extends State<NoteItemPage> {
     });
   }
 
+  void _refreshTagOptions(FocusNode focusNode) {
+    focusNode.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && focusNode.context != null) {
+        focusNode.requestFocus();
+      }
+    });
+  }
+
   void _addLink([String text = '']) {
     setState(() {
       _linkControllers.add(TextEditingController(text: text));
@@ -322,11 +331,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
                       fieldViewBuilder:
                           (context, controller, focusNode, onEditingComplete) {
                         _tagInputController = controller;
-                        focusNode.addListener(() {
-                          if (focusNode.hasFocus && controller.text.isEmpty) {
-                            controller.value = controller.value;
-                          }
-                        });
                         return TextField(
                           controller: controller,
                           focusNode: focusNode,
@@ -336,8 +340,8 @@ class _NoteItemPageState extends State<NoteItemPage> {
                             border: OutlineInputBorder(),
                           ),
                           onTap: () {
-                            if (controller.text.isEmpty) {
-                              controller.value = controller.value;
+                            if (controller.text.isEmpty && focusNode.hasFocus) {
+                              _refreshTagOptions(focusNode);
                             }
                           },
                           onSubmitted: (value) {
