@@ -71,6 +71,8 @@ void main() {
 
     expect(find.text('Travel Checklist'), findsOneWidget);
     expect(find.text('Passport'), findsOneWidget);
+    expect(find.textContaining('Packing Progress'), findsNothing);
+    expect(find.byType(Checkbox), findsNothing);
 
     // Switch to 'Done' tab
     await tester.tap(find.text('Done'));

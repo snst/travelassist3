@@ -34,11 +34,6 @@ class _TodoListPageState extends State<TodoListPage> {
               .where((item) => item.state == _selectedState)
               .toList();
 
-          // Calculate total progress
-          final totalCount = allItems.length;
-          final doneCount = allItems.where((i) => i.state == 2).toList().length;
-          final progress = totalCount > 0 ? doneCount / totalCount : 0.0;
-
           // Group items by category
           final grouped = <String, List<TodoItem>>{};
           for (final item in filteredItems) {
@@ -49,47 +44,6 @@ class _TodoListPageState extends State<TodoListPage> {
 
           return Column(
             children: [
-              if (totalCount > 0)
-                Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Packing Progress: $doneCount of $totalCount done',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            '${(progress * 100).toInt()}%',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 8,
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHigh,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               Expanded(
                 child: filteredItems.isEmpty
                     ? Center(
@@ -167,15 +121,6 @@ class _TodoListPageState extends State<TodoListPage> {
                                       const EdgeInsets.symmetric(vertical: 4),
                                   child: ListTile(
                                     onTap: () => _openItemPage(item),
-                                    leading: Checkbox(
-                                      value: item.state == 2,
-                                      onChanged: (bool? checked) async {
-                                        final newState =
-                                            checked == true ? 2 : 0;
-                                        await widget.database
-                                            .setTodoItemState(item.id, newState);
-                                      },
-                                    ),
                                     title: Text(
                                       item.name,
                                       style: TextStyle(
