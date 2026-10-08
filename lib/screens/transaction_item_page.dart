@@ -24,9 +24,9 @@ String transactionLabel(TransactionKind kind) {
     case TransactionKind.expense:
       return 'Expense';
     case TransactionKind.withdrawal:
-      return 'Withdrawal';
+      return 'ATM';
     case TransactionKind.cashCount:
-      return 'Cash Count';
+      return 'Count';
     case TransactionKind.deposit:
       return 'Deposit';
   }
@@ -314,7 +314,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
       return Align(
         alignment: Alignment.centerLeft,
         child: Chip(
-          avatar: Icon(transactionIcon(_kind), size: 18),
+          //avatar: Icon(transactionIcon(_kind), size: 18),
           label: Text(transactionLabel(_kind)),
         ),
       );
@@ -325,13 +325,13 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
       children: [
         for (final kind in TransactionKind.values)
           ChoiceChip(
-            avatar: Icon(
+            /*avatar: Icon(
               transactionIcon(kind),
               size: 18,
               color: _kind == kind
                   ? Theme.of(context).colorScheme.onPrimary
                   : null,
-            ),
+            ),*/
             label: Text(transactionLabel(kind)),
             selected: _kind == kind,
             showCheckmark: false,
@@ -434,13 +434,13 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
                 ),
                 const SizedBox(width: 12),
                 SizedBox(
-                  width: 240,
+                  width: 200,
                   child: TextFormField(
                     controller: _amountController,
                     readOnly: _lockAmount,
                     autofocus: _isNew,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 20),
+                    style: const TextStyle(fontSize: 18),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(_lockAmount ? r'[0-9.,-]' : r'[0-9.,]')),

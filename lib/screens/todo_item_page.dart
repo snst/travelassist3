@@ -138,21 +138,21 @@ class _TodoItemPageState extends State<TodoItemPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildQuantityCounter(
-                        label: 'Quantity',
-                        value: _quantity,
+                        label: 'Used',
+                        value: _used,
                         onChanged: (val) {
                           setState(() {
-                            _quantity = val;
+                            _used = val;
                           });
                         },
                       ),
                       const SizedBox(width: 16),
                       _buildQuantityCounter(
-                        label: 'Packed / Used',
-                        value: _used,
+                        label: 'Packed',
+                        value: _quantity,
                         onChanged: (val) {
                           setState(() {
-                            _used = val;
+                            _quantity = val;
                           });
                         },
                       ),
