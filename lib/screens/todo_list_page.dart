@@ -125,9 +125,6 @@ class _TodoListPageState extends State<TodoListPage> {
                                       item.name,
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
-                                        decoration: item.state == 2
-                                            ? TextDecoration.lineThrough
-                                            : null,
                                       ),
                                     ),
                                     subtitle: Column(
