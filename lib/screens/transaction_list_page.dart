@@ -3,6 +3,7 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
+import '../widgets/tag_filter_bar.dart';
 import 'balance_page.dart';
 import 'transaction_item_page.dart';
 
@@ -92,7 +93,7 @@ class TransactionListPage extends StatelessWidget {
   }
 }
 
-class _EntriesView extends StatelessWidget {
+class _EntriesView extends StatefulWidget {
   final AppDatabase database;
   final List<Currency> currencies;
   final List<MoneyTransaction> transactions;
@@ -103,16 +104,37 @@ class _EntriesView extends StatelessWidget {
     required this.transactions,
   });
 
+  @override
+  State<_EntriesView> createState() => _EntriesViewState();
+}
+
+class _EntriesViewState extends State<_EntriesView> {
+  final List<String> _selectedTags = [];
+
+  void _toggleTagFilter(String tag) {
+    setState(() {
+      if (_selectedTags.contains(tag)) {
+        _selectedTags.remove(tag);
+      } else {
+        _selectedTags.add(tag);
+      }
+    });
+  }
+
+  void _clearFilters() {
+    setState(_selectedTags.clear);
+  }
+
   Future<void> _delete(BuildContext context, MoneyTransaction t) async {
     final messenger = ScaffoldMessenger.of(context);
-    await database.deleteTransaction(t.id);
+    await widget.database.deleteTransaction(t.id);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(
       SnackBar(
         content: const Text('Entry deleted'),
         action: SnackBarAction(
           label: 'Undo',
-          onPressed: () => database.restoreTransaction(t),
+          onPressed: () => widget.database.restoreTransaction(t),
         ),
       ),
     );
@@ -120,7 +142,7 @@ class _EntriesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (transactions.isEmpty) {
+    if (widget.transactions.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -133,21 +155,32 @@ class _EntriesView extends StatelessWidget {
       );
     }
 
-    final home = Balance.homeCurrencyOf(currencies);
-    final byCode = {for (final c in currencies) c.shortName: c};
+    final home = Balance.homeCurrencyOf(widget.currencies);
+    final byCode = {for (final c in widget.currencies) c.shortName: c};
     CurrencyValue toHome(MoneyTransaction t) =>
         CurrencyValue(t.amount, byCode[t.currency]).convertTo(home);
 
+    final filteredTransactions = widget.transactions.where((t) {
+      return !t.isExpense || _selectedTags.every(t.tagList.contains);
+    }).toList();
+
+    final tagSet = <String>{..._selectedTags};
+    for (final t in filteredTransactions.where((t) => t.isExpense)) {
+      tagSet.addAll(t.tagList);
+    }
+    final sortedTags = tagSet.toList()..sort();
+
     // Entries are sorted newest first; flatten into day headers and entries.
     final dayExpenses = <DateTime, CurrencyValue>{};
-    for (final t in transactions.where((t) => t.isExpense && !t.isPlanned)) {
+    for (final t
+        in filteredTransactions.where((t) => t.isExpense && !t.isPlanned)) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
     }
 
     final rows = <Object>[];
     DateTime? currentDay;
-    for (final t in transactions) {
+    for (final t in filteredTransactions) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       if (day != currentDay) {
         currentDay = day;
@@ -156,69 +189,86 @@ class _EntriesView extends StatelessWidget {
       rows.add(t);
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(
-        12,
-        0,
-        12,
-        88 + MediaQuery.of(context).padding.bottom,
-      ),
-      itemCount: rows.length,
-      itemBuilder: (context, index) {
-        final row = rows[index];
-        if (row is _DayHeader) {
-          final theme = Theme.of(context);
-          final today = DateTime.now();
-          final isToday = row.day.year == today.year &&
-              row.day.month == today.month &&
-              row.day.day == today.day;
-          final dayStyle = isToday
-              ? theme.textTheme.labelLarge?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                )
-              : theme.textTheme.labelLarge;
+    return Column(
+      children: [
+        Expanded(
+          child: rows.isEmpty
+              ? const Center(child: Text('No expenses match the selected tags.'))
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    0,
+                    12,
+                    88 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  itemCount: rows.length,
+                  itemBuilder: (context, index) {
+                    final row = rows[index];
+                    if (row is _DayHeader) {
+                      final theme = Theme.of(context);
+                      final today = DateTime.now();
+                      final isToday = row.day.year == today.year &&
+                          row.day.month == today.month &&
+                          row.day.day == today.day;
+                      final dayStyle = isToday
+                          ? theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.bold,
+                            )
+                          : theme.textTheme.labelLarge;
 
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
-            child: Container(
-              padding: isToday
-                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-                  : EdgeInsets.zero,
-              decoration: isToday
-                  ? BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    )
-                  : null,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(formatDay(row.day), style: dayStyle),
-                  if (row.expenses.value != 0)
-                    Text(row.expenses.toString(), style: dayStyle),
-                ],
-              ),
-            ),
-          );
-        }
-        final t = row as MoneyTransaction;
-        return _EntryTile(
-          transaction: t,
-          home: toHome(t),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TransactionItemPage(
-                database: database,
-                transaction: t,
-                currencies: currencies,
-                transactions: transactions,
-              ),
-            ),
-          ),
-          onDelete: () => _delete(context, t),
-        );
-      },
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
+                        child: Container(
+                          padding: isToday
+                              ? const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                )
+                              : EdgeInsets.zero,
+                          decoration: isToday
+                              ? BoxDecoration(
+                                  color: theme.colorScheme.primaryContainer,
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(formatDay(row.day), style: dayStyle),
+                              if (row.expenses.value != 0)
+                                Text(row.expenses.toString(), style: dayStyle),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    final t = row as MoneyTransaction;
+                    return _EntryTile(
+                      transaction: t,
+                      home: toHome(t),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => TransactionItemPage(
+                            database: widget.database,
+                            transaction: t,
+                            currencies: widget.currencies,
+                            transactions: widget.transactions,
+                          ),
+                        ),
+                      ),
+                      onDelete: () => _delete(context, t),
+                    );
+                  },
+                ),
+        ),
+        TagFilterBar(
+          tags: sortedTags,
+          selectedTags: _selectedTags,
+          onTagSelected: _toggleTagFilter,
+          onClear: _clearFilters,
+        ),
+      ],
     );
   }
 }
