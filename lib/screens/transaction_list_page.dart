@@ -61,11 +61,15 @@ class TransactionListPage extends StatelessWidget {
                         ),
               floatingActionButton: loading || currencies.isEmpty
                   ? null
-                  : FloatingActionButton(
-                      heroTag: 'expenses_fab',
-                      tooltip: 'Add Entry',
-                      onPressed: () => _openItem(context, null, currencies, transactions),
-                      child: const Icon(Icons.add),
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      child: FloatingActionButton(
+                        heroTag: 'expenses_fab',
+                        tooltip: 'Add Entry',
+                        onPressed: () =>
+                            _openItem(context, null, currencies, transactions),
+                        child: const Icon(Icons.add),
+                      ),
                     ),
             );
           },

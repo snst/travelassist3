@@ -276,11 +276,14 @@ class _NoteListPageState extends State<NoteListPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'notes_fab',
-        onPressed: () => _openNotePage(null),
-        tooltip: 'Add Note',
-        child: const Icon(Icons.add),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 100),
+        child: FloatingActionButton(
+          heroTag: 'notes_fab',
+          onPressed: () => _openNotePage(null),
+          tooltip: 'Add Note',
+          child: const Icon(Icons.add),
+        ),
       ),
     );
   }
