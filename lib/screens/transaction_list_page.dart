@@ -167,21 +167,38 @@ class _EntriesView extends StatelessWidget {
       itemBuilder: (context, index) {
         final row = rows[index];
         if (row is _DayHeader) {
+          final theme = Theme.of(context);
+          final today = DateTime.now();
+          final isToday = row.day.year == today.year &&
+              row.day.month == today.month &&
+              row.day.day == today.day;
+          final dayStyle = isToday
+              ? theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                )
+              : theme.textTheme.labelLarge;
+
           return Padding(
             padding: const EdgeInsets.fromLTRB(4, 14, 4, 2),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  formatDay(row.day),
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                if (row.expenses.value != 0)
-                  Text(
-                    row.expenses.toString(),
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-              ],
+            child: Container(
+              padding: isToday
+                  ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+                  : EdgeInsets.zero,
+              decoration: isToday
+                  ? BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    )
+                  : null,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(formatDay(row.day), style: dayStyle),
+                  if (row.expenses.value != 0)
+                    Text(row.expenses.toString(), style: dayStyle),
+                ],
+              ),
             ),
           );
         }
@@ -267,6 +284,7 @@ class _EntryTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDelete(),
       child: Card(
+        color: t.isPlanned ? scheme.tertiaryContainer : null,
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           onTap: onTap,

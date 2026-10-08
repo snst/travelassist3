@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../widgets/tag_filter_bar.dart';
 import 'note_actions.dart';
 import 'note_item_page.dart';
 
@@ -265,59 +266,12 @@ class _NoteListPageState extends State<NoteListPage> {
                         },
                       ),
               ),
-              if (sortedTags.isNotEmpty)
-                Container(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    8,
-                    12,
-                    8 + MediaQuery.of(context).padding.bottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Filter by Tag:',
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                          if (_selectedTags.isNotEmpty)
-                            InkWell(
-                              onTap: _clearFilters,
-                              child: const Text(
-                                'Clear filter',
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.blueAccent),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: sortedTags.map((tag) {
-                            final isSelected = _selectedTags.contains(tag);
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 6.0),
-                              child: FilterChip(
-                                label: Text('#$tag'),
-                                selected: isSelected,
-                                onSelected: (_) => _toggleTagFilter(tag),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              TagFilterBar(
+                tags: sortedTags,
+                selectedTags: _selectedTags,
+                onTagSelected: _toggleTagFilter,
+                onClear: _clearFilters,
+              ),
             ],
           );
         },

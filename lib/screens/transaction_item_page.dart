@@ -440,7 +440,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
                     readOnly: _lockAmount,
                     autofocus: _isNew,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 24),
+                    style: const TextStyle(fontSize: 20),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(RegExp(_lockAmount ? r'[0-9.,-]' : r'[0-9.,]')),
@@ -540,20 +540,27 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
               onTap: _pickDate,
             ),
             if (_kind == TransactionKind.expense)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Planned'),
-                subtitle: const Text('Not paid yet; excluded from current balance'),
-                value: _isPlanned,
-                onChanged: (v) => setState(() => _isPlanned = v),
-              ),
-            if (_kind == TransactionKind.expense)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Include in daily average'),
-                subtitle: const Text('Turn off for one-off costs such as flights'),
-                value: _includeInAverage,
-                onChanged: (v) => setState(() => _includeInAverage = v),
+              Row(
+                children: [
+                  Expanded(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Planned'),
+                      value: _isPlanned,
+                      onChanged: (v) => setState(() => _isPlanned = v),
+                    ),
+                  ),
+                  SizedBox(width: 20,),
+                  Expanded(
+                    child: SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('In average'),
+                      value: _includeInAverage,
+                      onChanged: (v) =>
+                          setState(() => _includeInAverage = v),
+                    ),
+                  ),
+                ],
               ),
             const SizedBox(height: 16),
             FilledButton.icon(
