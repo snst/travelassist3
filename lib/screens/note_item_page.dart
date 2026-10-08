@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../database/database.dart';
+import '../widgets/tag_editor.dart';
 import 'note_actions.dart';
 
 class NoteItemPage extends StatefulWidget {
@@ -24,7 +25,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _commentController;
   final List<TextEditingController> _linkControllers = [];
-  TextEditingController? _tagInputController;
 
   late List<String> _tags;
   List<String> _availableTags = [];
@@ -83,15 +83,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
   void _removeTag(String tag) {
     setState(() {
       _tags.remove(tag);
-    });
-  }
-
-  void _refreshTagOptions(FocusNode focusNode) {
-    focusNode.unfocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && focusNode.context != null) {
-        focusNode.requestFocus();
-      }
     });
   }
 
@@ -290,79 +281,11 @@ class _NoteItemPageState extends State<NoteItemPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Tags Section
-              /*const Text(
-                'Tags',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 8),*/
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  ..._tags.map(
-                    (tag) => Chip(
-                      label: Text('#$tag'),
-                      onDeleted: () => _removeTag(tag),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Autocomplete<String>(
-                      optionsBuilder: (textValue) {
-                        if (textValue.text.isEmpty) {
-                          return _availableTags
-                              .where((t) => !_tags.contains(t));
-                        }
-                        return _availableTags.where((t) =>
-                            !_tags.contains(t) &&
-                            t.toLowerCase().contains(
-                                textValue.text.toLowerCase()));
-                      },
-                      onSelected: (selection) {
-                        _addTag(selection);
-                        _tagInputController?.clear();
-                      },
-                      fieldViewBuilder:
-                          (context, controller, focusNode, onEditingComplete) {
-                        _tagInputController = controller;
-                        return TextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          decoration: const InputDecoration(
-                            hintText: 'Add tag (e.g. hotel, map, important)',
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                          ),
-                          onTap: () {
-                            if (controller.text.isEmpty && focusNode.hasFocus) {
-                              _refreshTagOptions(focusNode);
-                            }
-                          },
-                          onSubmitted: (value) {
-                            _addTag(value);
-                            controller.clear();
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    icon: const Icon(Icons.add),
-                    onPressed: () {
-                      if (_tagInputController != null) {
-                        _addTag(_tagInputController!.text);
-                        _tagInputController!.clear();
-                      }
-                    },
-                  ),
-                ],
+              TagEditor(
+                tags: _tags,
+                availableTags: _availableTags,
+                onTagAdded: _addTag,
+                onTagRemoved: _removeTag,
               ),
               const SizedBox(height: 20),
 
