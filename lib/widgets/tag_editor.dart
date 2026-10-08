@@ -34,13 +34,17 @@ class _TagEditorState extends State<TagEditor> {
     _inputController?.clear();
   }
 
-  void _refreshOptions(FocusNode focusNode) {
-    focusNode.unfocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && focusNode.context != null) {
-        focusNode.requestFocus();
+  void _refreshOptions(TextEditingController controller) {
+    for (final tag in widget.availableTags) {
+      if (!widget.tags.contains(tag)) {
+        controller.value = TextEditingValue(
+          text: tag,
+          selection: TextSelection.collapsed(offset: tag.length),
+        );
+        controller.clear();
+        return;
       }
-    });
+    }
   }
 
   @override
@@ -98,7 +102,7 @@ class _TagEditorState extends State<TagEditor> {
                     onChanged: widget.onInputChanged,
                     onTap: () {
                       if (controller.text.isEmpty && focusNode.hasFocus) {
-                        _refreshOptions(focusNode);
+                        _refreshOptions(controller);
                       }
                     },
                     onSubmitted: _addTag,
