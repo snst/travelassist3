@@ -5,6 +5,10 @@ class TagEditor extends StatefulWidget {
   final List<String> availableTags;
   final ValueChanged<String> onTagAdded;
   final ValueChanged<String> onTagRemoved;
+  final ValueChanged<String>? onInputChanged;
+  final String? labelText;
+  final String? hintText;
+  final String initialInput;
 
   const TagEditor({
     super.key,
@@ -12,6 +16,10 @@ class TagEditor extends StatefulWidget {
     required this.availableTags,
     required this.onTagAdded,
     required this.onTagRemoved,
+    this.onInputChanged,
+    this.labelText,
+    this.hintText = 'Add tag',
+    this.initialInput = '',
   });
 
   @override
@@ -39,24 +47,28 @@ class _TagEditorState extends State<TagEditor> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            ...widget.tags.map(
-              (tag) => Chip(
-                label: Text('#$tag'),
-                onDeleted: () => widget.onTagRemoved(tag),
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ],
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final tag in widget.tags)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Chip(
+                    label: Text('#$tag'),
+                    onDeleted: () => widget.onTagRemoved(tag),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: Autocomplete<String>(
+                initialValue: TextEditingValue(text: widget.initialInput),
                 optionsBuilder: (textValue) {
                   if (textValue.text.isEmpty) {
                     return widget.availableTags
@@ -77,11 +89,13 @@ class _TagEditorState extends State<TagEditor> {
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      hintText: 'Add tag (e.g. hotel, map, important)',
+                    decoration: InputDecoration(
+                      labelText: widget.labelText,
+                      hintText: widget.hintText,
                       isDense: true,
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
                     ),
+                    onChanged: widget.onInputChanged,
                     onTap: () {
                       if (controller.text.isEmpty && focusNode.hasFocus) {
                         _refreshOptions(focusNode);

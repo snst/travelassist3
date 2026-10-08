@@ -4,6 +4,7 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
+import '../widgets/tag_editor.dart';
 
 IconData transactionIcon(TransactionKind kind) {
   switch (kind) {
@@ -56,11 +57,11 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
   late final TextEditingController _amountController;
   late final TextEditingController _methodController;
   late final TextEditingController _commentController;
-  final _tagController = TextEditingController();
 
   late TransactionKind _kind;
   late String _currencyCode;
   late List<String> _tags;
+  String _tagDraft = '';
   late DateTime _date;
   late bool _includeInAverage;
   late bool _isPlanned;
@@ -110,7 +111,6 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     _amountController.dispose();
     _methodController.dispose();
     _commentController.dispose();
-    _tagController.dispose();
     super.dispose();
   }
 
@@ -198,7 +198,7 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     if (cleaned.isNotEmpty && !_tags.contains(cleaned)) {
       setState(() => _tags.add(cleaned));
     }
-    _tagController.clear();
+    _tagDraft = '';
   }
 
   Future<void> _pickDate() async {
@@ -239,7 +239,9 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     var method = _usesMethod ? _methodController.text.trim() : '';
     if (_kind == TransactionKind.expense && method.isEmpty) method = cashMethod;
 
-    if (_tagController.text.trim().isNotEmpty) _addTag(_tagController.text);
+    if (_kind == TransactionKind.expense && _tagDraft.trim().isNotEmpty) {
+      _addTag(_tagDraft);
+    }
     final tags = _kind == TransactionKind.expense ? _tags : <String>[];
     final isPlanned = _kind == TransactionKind.expense && _isPlanned;
 
@@ -506,48 +508,18 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
             ],
             if (_kind == TransactionKind.expense) ...[
               const SizedBox(height: 20),
-              if (_tags.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final tag in _tags)
-                      InputChip(
-                        label: Text('#$tag'),
-                        onDeleted: () => setState(() => _tags.remove(tag)),
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-              if (_tags.isNotEmpty) const SizedBox(height: 8),
-              TextField(
-                controller: _tagController,
-                decoration: InputDecoration(
-                  labelText: 'Add tag',
-                  hintText: 'e.g. food, taxi, hotel',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: () => _addTag(_tagController.text),
-                  ),
-                ),
-                onSubmitted: _addTag,
+              TagEditor(
+                tags: _tags,
+                availableTags: knownTags,
+                initialInput: _tagDraft,
+                labelText: 'Add tag',
+                hintText: 'e.g. food, taxi, hotel',
+                onInputChanged: (value) => _tagDraft = value,
+                onTagAdded: _addTag,
+                onTagRemoved: (tag) {
+                  setState(() => _tags.remove(tag));
+                },
               ),
-              if (knownTags.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    for (final tag in knownTags)
-                      ActionChip(
-                        label: Text('#$tag'),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _addTag(tag),
-                      ),
-                  ],
-                ),
-              ],
             ],
             const SizedBox(height: 20),
             TextFormField(
