@@ -9,6 +9,7 @@ import '../widgets/comment_input.dart';
 import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
+import '../widgets/link_editor.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
@@ -66,6 +67,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
   late final TextEditingController _amountController;
   late final TextEditingController _commentController;
   late final TextEditingController _methodController;
+  late final LinkListController _links;
   late String _currencyCode;
   late DateTime _date;
 
@@ -84,6 +86,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
     );
     _commentController = TextEditingController(text: t?.comment ?? '');
     _methodController = TextEditingController(text: t?.method ?? '');
+    _links = LinkListController(t?.linkList ?? []);
     _currencyCode = t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _date = t?.date ?? DateTime.now();
@@ -98,6 +101,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
     _amountController.dispose();
     _commentController.dispose();
     _methodController.dispose();
+    _links.dispose();
     super.dispose();
   }
 
@@ -122,6 +126,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
         method: method,
         comment: comment,
         date: _date,
+        link: _links.joined,
       );
     } else {
       await widget.database.updateTransactionEntry(
@@ -131,6 +136,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
           method: method,
           comment: comment,
           date: _date,
+          link: _links.joined,
         ),
       );
     }
@@ -169,6 +175,8 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
           ),
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
+          const SizedBox(height: 20),
+          LinkEditor(controller: _links),
           const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,

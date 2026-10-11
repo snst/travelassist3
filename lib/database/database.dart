@@ -41,6 +41,7 @@ class MoneyTransactions extends Table {
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get includeInAverage => boolean().withDefault(const Constant(true))();
   BoolColumn get isPlanned => boolean().withDefault(const Constant(false))(); // expenses only
+  TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
 }
 
 @DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
@@ -49,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -69,6 +70,10 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from == 4) {
           await m.addColumn(moneyTransactions, moneyTransactions.isPlanned);
+        }
+        // Tables created above (from < 4) already include the link column.
+        if (from >= 4 && from < 6) {
+          await m.addColumn(moneyTransactions, moneyTransactions.link);
         }
       },
     );
@@ -336,6 +341,7 @@ class AppDatabase extends _$AppDatabase {
     DateTime? date,
     bool includeInAverage = true,
     bool isPlanned = false,
+    String link = '',
   }) {
     return into(moneyTransactions).insert(
       MoneyTransactionsCompanion.insert(
@@ -348,6 +354,7 @@ class AppDatabase extends _$AppDatabase {
         date: Value(date ?? DateTime.now()),
         includeInAverage: Value(includeInAverage),
         isPlanned: Value(isPlanned),
+        link: Value(link),
       ),
     );
   }
@@ -383,6 +390,12 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   List<String> get tagList => tags
       .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
+  List<String> get linkList => link
+      .split('\t')
       .map((e) => e.trim())
       .where((e) => e.isNotEmpty)
       .toList();

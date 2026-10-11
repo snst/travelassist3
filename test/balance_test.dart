@@ -27,6 +27,7 @@ void main() {
       date: date ?? DateTime(2026, 5, 1, 12),
       includeInAverage: includeInAverage,
       isPlanned: isPlanned,
+      link: '',
     );
   }
 

@@ -10,6 +10,7 @@ import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/expense_flag_switches.dart';
+import '../widgets/link_editor.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
@@ -68,6 +69,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   late final TextEditingController _amountController;
   late final TextEditingController _commentController;
   late final TextEditingController _methodController;
+  late final LinkListController _links;
   late String _currencyCode;
   late List<String> _tags;
   String _tagDraft = '';
@@ -90,6 +92,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     );
     _commentController = TextEditingController(text: t?.comment ?? '');
     _methodController = TextEditingController(text: t?.method ?? '');
+    _links = LinkListController(t?.linkList ?? []);
     _currencyCode = t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
@@ -104,6 +107,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _amountController.dispose();
     _commentController.dispose();
     _methodController.dispose();
+    _links.dispose();
     super.dispose();
   }
 
@@ -143,6 +147,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         date: _date,
         includeInAverage: _includeInAverage,
         isPlanned: _isPlanned,
+        link: _links.joined,
       );
     } else {
       await widget.database.updateTransactionEntry(
@@ -155,6 +160,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           date: _date,
           includeInAverage: _includeInAverage,
           isPlanned: _isPlanned,
+          link: _links.joined,
         ),
       );
     }
@@ -208,6 +214,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           ),
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
+          const SizedBox(height: 20),
+          LinkEditor(controller: _links),
           const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
