@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
-import '../utils/date_format.dart';
+import '../widgets/currency_amount_input.dart';
+import '../widgets/comment_input.dart';
+import '../widgets/date_time_picker_tile.dart';
+import '../widgets/payment_method_selector.dart';
 import '../widgets/tag_editor.dart';
 
 IconData transactionIcon(TransactionKind kind) {
@@ -201,30 +203,6 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     _tagDraft = '';
   }
 
-  Future<void> _pickDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_date),
-    );
-    if (!mounted) return;
-    setState(() {
-      _date = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time?.hour ?? _date.hour,
-        time?.minute ?? _date.minute,
-      );
-    });
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_currencyCode.isEmpty) {
@@ -404,108 +382,43 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
               _buildKindSelector(),
               const SizedBox(height: 16),
             ],
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      for (final code in codes)
-                        ChoiceChip(
-                          label: Text(code),
-                          selected: _currencyCode == code,
-                          showCheckmark: false,
-                          selectedColor: Theme.of(context).colorScheme.primary,
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: _currencyCode == code
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : null,
-                          ),
-                          onSelected: _lockAmount
-                              ? null
-                              : (_) => setState(() => _currencyCode = code),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  width: 200,
-                  child: TextFormField(
-                    controller: _amountController,
-                    readOnly: _lockAmount,
-                    autofocus: _isNew,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(fontSize: 18),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(_lockAmount ? r'[0-9.,-]' : r'[0-9.,]')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: _kind == TransactionKind.cashCount
-                          ? (_isNew ? 'Counted cash' : 'Correction')
-                          : 'Amount',
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) {
-                      if (_lockAmount) return null;
-                      if ((value ?? '').trim().isEmpty) return 'Please enter an amount';
-                      final v = CurrencyValue.safeConvertToDouble(value!);
-                      if (_kind != TransactionKind.cashCount && v <= 0) {
-                        return 'Amount must be greater than 0';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
+            CurrencyAmountInput(
+              currencyCodes: codes,
+              selectedCurrencyCode: _currencyCode,
+              onCurrencySelected: _lockAmount
+                  ? null
+                  : (code) => setState(() => _currencyCode = code),
+              amountController: _amountController,
+              readOnly: _lockAmount,
+              autofocus: _isNew,
+              allowNegative: _lockAmount,
+              amountLabel: _kind == TransactionKind.cashCount
+                  ? (_isNew ? 'Counted cash' : 'Correction')
+                  : 'Amount',
+              onAmountChanged: (_) => setState(() {}),
+              amountValidator: (value) {
+                if (_lockAmount) return null;
+                if ((value ?? '').trim().isEmpty) {
+                  return 'Please enter an amount';
+                }
+                final v = CurrencyValue.safeConvertToDouble(value!);
+                if (_kind != TransactionKind.cashCount && v <= 0) {
+                  return 'Amount must be greater than 0';
+                }
+                return null;
+              },
             ),
             //const SizedBox(height: 12),
 
             if (_isNew && _kind == TransactionKind.cashCount) _buildCashCountHint(),
-            if (_usesMethod) ...[
-              //const SizedBox(height: 20),
-              const Text(
-                'Payment method',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            if (_usesMethod)
+              PaymentMethodSelector(
+                methods: _methodSuggestions(_kind),
+                selectedMethod: _methodController.text,
+                onSelected: (method) =>
+                    setState(() => _methodController.text = method),
+                onAddMethod: _showAddPaymentMethodDialog,
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  for (final method in _methodSuggestions(_kind))
-                    ActionChip(
-                      backgroundColor: _methodController.text == method
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                      label: Text(
-                        method,
-                        style: TextStyle(
-                          fontWeight: _methodController.text == method
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          color: _methodController.text == method
-                              ? Theme.of(context).colorScheme.onPrimary
-                              : null,
-                        ),
-                      ),
-                      onPressed: () => setState(() => _methodController.text = method),
-                    ),
-                  ActionChip(
-                    avatar: const Icon(Icons.more_horiz, size: 18),
-                    label: const Text(''),
-                    onPressed: _showAddPaymentMethodDialog,
-                  ),
-                ],
-              ),
-            ],
             if (_kind == TransactionKind.expense) ...[
               const SizedBox(height: 20),
               TagEditor(
@@ -522,22 +435,13 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
               ),
             ],
             const SizedBox(height: 20),
-            TextFormField(
+            CommentInput(
               controller: _commentController,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Comment',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
             ),
             const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event),
-              title: Text(formatDateTime(_date)),
-              trailing: const Icon(Icons.edit_calendar),
-              onTap: _pickDate,
+            DateTimePickerTile(
+              value: _date,
+              onChanged: (date) => setState(() => _date = date),
             ),
             if (_kind == TransactionKind.expense)
               Row(
