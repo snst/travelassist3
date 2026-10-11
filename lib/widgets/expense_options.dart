@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import '../database/database.dart';
 import 'average_days_input.dart';
 
-/// The "Planned" switch and the "In average" day count of an expense.
+/// The "Planned" switch (toggles between planned and paid) and the "In average" day count of an expense.
 class ExpenseOptions extends StatelessWidget {
-  final bool isPlanned;
+  final TransactionState state;
   final int averageDays;
-  final ValueChanged<bool> onPlannedChanged;
+  final ValueChanged<TransactionState> onStateChanged;
   final ValueChanged<int> onAverageDaysChanged;
 
   const ExpenseOptions({
     super.key,
-    required this.isPlanned,
+    required this.state,
     required this.averageDays,
-    required this.onPlannedChanged,
+    required this.onStateChanged,
     required this.onAverageDaysChanged,
   });
 
@@ -25,8 +26,10 @@ class ExpenseOptions extends StatelessWidget {
           child: SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Planned'),
-            value: isPlanned,
-            onChanged: onPlannedChanged,
+            value: state == TransactionState.planned,
+            onChanged: (planned) => onStateChanged(
+              planned ? TransactionState.planned : TransactionState.paid,
+            ),
           ),
         ),
         const SizedBox(width: 20),

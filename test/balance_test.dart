@@ -14,7 +14,7 @@ void main() {
     String method = '',
     DateTime? date,
     int includeInAverage = 1,
-    bool isPlanned = false,
+    TransactionState state = TransactionState.paid,
   }) {
     return MoneyTransaction(
       id: ++nextId,
@@ -26,7 +26,7 @@ void main() {
       tags: '',
       date: date ?? DateTime(2026, 5, 1, 12),
       includeInAverage: includeInAverage,
-      isPlanned: isPlanned,
+      state: state.index,
       link: '',
     );
   }
@@ -78,9 +78,9 @@ void main() {
         tx(TransactionKind.withdrawal, 100, 'EUR', method: 'Visa'),
         tx(TransactionKind.expense, 20, 'EUR', method: cashMethod),
         tx(TransactionKind.expense, 30, 'EUR',
-            method: cashMethod, isPlanned: true, date: DateTime(2026, 5, 10)),
+            method: cashMethod, state: TransactionState.planned, date: DateTime(2026, 5, 10)),
         tx(TransactionKind.expense, 40, 'EUR',
-            method: 'Visa', isPlanned: true, date: DateTime(2026, 5, 10)),
+            method: 'Visa', state: TransactionState.planned, date: DateTime(2026, 5, 10)),
       ],
     );
 

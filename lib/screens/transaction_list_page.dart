@@ -295,7 +295,7 @@ class _EntryTile extends StatelessWidget {
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign = home.currency == null || home.currencyString != t.currency;
     final details = [
-      if (t.isPlanned) 'Planned',
+      if (t.isPlanned) 'Planned' else if (t.isBooked) 'Booked',
       if (t.isExpense || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
       if (t.comment.isNotEmpty) t.comment,
     ].join(' · ');

@@ -41,7 +41,7 @@ class MoneyTransactions extends Table {
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   // Number of days the expense counts in the daily average: 0 = not included, 1 = default.
   IntColumn get includeInAverage => integer().withDefault(const Constant(1))();
-  BoolColumn get isPlanned => boolean().withDefault(const Constant(false))(); // expenses only
+  IntColumn get state => integer().withDefault(const Constant(2))(); // TransactionState.index, default paid
   TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
 }
 
@@ -51,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -69,17 +69,26 @@ class AppDatabase extends _$AppDatabase {
         if (from < 4) {
           await m.createTable(moneyTransactions);
         }
-        if (from == 4) {
-          await m.addColumn(moneyTransactions, moneyTransactions.isPlanned);
-        }
-        // Tables created above (from < 4) already include the link column.
-        if (from >= 4 && from < 6) {
-          await m.addColumn(moneyTransactions, moneyTransactions.link);
-        }
-        // includeInAverage changed from a bool to a day count; the old 0/1 values
-        // carry over unchanged, but the table must be rebuilt to drop the bool CHECK.
-        if (from >= 4 && from < 7) {
-          await m.alterTable(TableMigration(moneyTransactions));
+        // Tables created above (from < 4) already have the current layout. Older ones are
+        // rebuilt once: link is new before v6, and is_planned (v5-v7) became the state column.
+        // includeInAverage changed from a bool to a day count; the old 0/1 values carry
+        // over unchanged, but the rebuild drops the bool CHECK.
+        if (from >= 4 && from < 8) {
+          await m.alterTable(
+            TableMigration(
+              moneyTransactions,
+              columnTransformer: {
+                if (from >= 5)
+                  moneyTransactions.state: const CustomExpression<int>(
+                    'CASE WHEN is_planned = 1 THEN 0 ELSE 2 END',
+                  ),
+              },
+              newColumns: [
+                if (from < 6) moneyTransactions.link,
+                moneyTransactions.state,
+              ],
+            ),
+          );
         }
       },
     );
@@ -346,7 +355,7 @@ class AppDatabase extends _$AppDatabase {
     List<String> tags = const [],
     DateTime? date,
     int includeInAverage = 1,
-    bool isPlanned = false,
+    TransactionState state = TransactionState.paid,
     String link = '',
   }) {
     return into(moneyTransactions).insert(
@@ -359,7 +368,7 @@ class AppDatabase extends _$AppDatabase {
         tags: Value(tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',')),
         date: Value(date ?? DateTime.now()),
         includeInAverage: Value(includeInAverage),
-        isPlanned: Value(isPlanned),
+        state: Value(state.index),
         link: Value(link),
       ),
     );
@@ -380,12 +389,24 @@ class AppDatabase extends _$AppDatabase {
 
 enum TransactionKind { expense, withdrawal, cashCount, deposit }
 
+/// Lifecycle of a transaction; the index is stored in [MoneyTransactions.state].
+enum TransactionState { planned, booked, paid }
+
 const cashMethod = 'Cash';
 
 extension MoneyTransactionHelpers on MoneyTransaction {
   TransactionKind get type => kind >= 0 && kind < TransactionKind.values.length
       ? TransactionKind.values[kind]
       : TransactionKind.expense;
+
+  TransactionState get transactionState =>
+      state >= 0 && state < TransactionState.values.length
+          ? TransactionState.values[state]
+          : TransactionState.paid;
+
+  bool get isPlanned => transactionState == TransactionState.planned;
+  bool get isBooked => transactionState == TransactionState.booked;
+  bool get isPaid => transactionState == TransactionState.paid;
 
   bool get isExpense => type == TransactionKind.expense;
   bool get isWithdrawal => type == TransactionKind.withdrawal;

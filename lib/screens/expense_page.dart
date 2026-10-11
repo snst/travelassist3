@@ -75,7 +75,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   String _tagDraft = '';
   late DateTime _date;
   late int _averageDays;
-  late bool _isPlanned;
+  late TransactionState _state;
 
   List<String> get _methods => paymentMethodSuggestions(
         transactions: widget.transactions,
@@ -98,7 +98,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
     _averageDays = t?.includeInAverage ?? 1;
-    _isPlanned = t?.isPlanned ?? false;
+    _state = t?.transactionState ?? TransactionState.paid;
     if (t == null) _methodController.text = _methods.first;
   }
 
@@ -146,7 +146,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         tags: _tags,
         date: _date,
         includeInAverage: _averageDays,
-        isPlanned: _isPlanned,
+        state: _state,
         link: _links.joined,
       );
     } else {
@@ -159,7 +159,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           tags: _tags.join(','),
           date: _date,
           includeInAverage: _averageDays,
-          isPlanned: _isPlanned,
+          state: _state.index,
           link: _links.joined,
         ),
       );
@@ -222,9 +222,9 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             onChanged: (date) => setState(() => _date = date),
           ),
           ExpenseOptions(
-            isPlanned: _isPlanned,
+            state: _state,
             averageDays: _averageDays,
-            onPlannedChanged: (v) => setState(() => _isPlanned = v),
+            onStateChanged: (v) => setState(() => _state = v),
             onAverageDaysChanged: (v) => setState(() => _averageDays = v),
           ),
           const SizedBox(height: 16),
