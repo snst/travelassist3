@@ -2,26 +2,40 @@ import 'package:flutter/material.dart';
 import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
+import '../utils/currency_codes.dart';
+import '../utils/transaction_kind.dart';
 import '../widgets/cash_count_hint.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
+import '../widgets/delete_entry_button.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
 class CashCountPage extends StatelessWidget {
   final AppDatabase database;
 
-  const CashCountPage({super.key, required this.database});
+  /// An existing count to edit; null to add a new one.
+  final MoneyTransaction? transaction;
+
+  const CashCountPage({super.key, required this.database, this.transaction});
 
   @override
   Widget build(BuildContext context) {
+    final existing = transaction;
     return TransactionDataScaffold(
       database: database,
-      title: 'Count Cash',
+      title: existing == null
+          ? 'Count Cash'
+          : 'Edit ${transactionLabel(TransactionKind.cashCount)}',
+      actions: [
+        if (existing != null)
+          DeleteEntryButton(database: database, transaction: existing),
+      ],
       builder: (context, currencies, transactions) => _CashCountForm(
         database: database,
         currencies: currencies,
         transactions: transactions,
+        existing: existing,
       ),
     );
   }
@@ -33,11 +47,13 @@ class _CashCountForm extends StatefulWidget {
 
   /// All stored transactions, newest first; used for the expected cash and default currency.
   final List<MoneyTransaction> transactions;
+  final MoneyTransaction? existing;
 
   const _CashCountForm({
     required this.database,
     required this.currencies,
     required this.transactions,
+    required this.existing,
   });
 
   @override
@@ -46,10 +62,13 @@ class _CashCountForm extends StatefulWidget {
 
 class _CashCountFormState extends State<_CashCountForm> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _commentController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _commentController;
   late String _currencyCode;
-  DateTime _date = DateTime.now();
+  late DateTime _date;
+
+  // An existing count stores a computed difference, so only comment and date are editable.
+  bool get _isEdit => widget.existing != null;
 
   Balance get _balance => Balance.from(
         currencies: widget.currencies,
@@ -59,12 +78,14 @@ class _CashCountFormState extends State<_CashCountForm> {
   @override
   void initState() {
     super.initState();
-    final codes = widget.currencies.map((c) => c.shortName).toList();
-    final lastUsed =
-        widget.transactions.isNotEmpty ? widget.transactions.first.currency : null;
-    _currencyCode = lastUsed != null && codes.contains(lastUsed)
-        ? lastUsed
-        : Balance.homeCurrencyOf(widget.currencies)?.shortName ?? codes.first;
+    final t = widget.existing;
+    _amountController = TextEditingController(
+      text: t == null ? '' : t.amount.toStringAsFixed(2),
+    );
+    _commentController = TextEditingController(text: t?.comment ?? '');
+    _currencyCode = t?.currency ??
+        defaultCurrencyCode(widget.currencies, widget.transactions);
+    _date = t?.date ?? DateTime.now();
   }
 
   @override
@@ -74,25 +95,35 @@ class _CashCountFormState extends State<_CashCountForm> {
     super.dispose();
   }
 
-  // A count is stored as the difference to the expected cash.
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final entered = CurrencyValue.safeConvertToDouble(_amountController.text);
-    final counted = 'Counted: ${entered.toStringAsFixed(2)} $_currencyCode';
-    final comment = _commentController.text.trim();
-    await widget.database.addTransaction(
-      kind: TransactionKind.cashCount,
-      amount: entered - _balance.cashIn(_currencyCode),
-      currency: _currencyCode,
-      comment: comment.isEmpty ? counted : '$counted - $comment',
-      date: _date,
-    );
+    final existing = widget.existing;
+    if (existing != null) {
+      await widget.database.updateTransactionEntry(
+        existing.copyWith(
+          comment: _commentController.text.trim(),
+          date: _date,
+        ),
+      );
+    } else {
+      // A new count is stored as the difference to the expected cash.
+      final entered = CurrencyValue.safeConvertToDouble(_amountController.text);
+      final counted = 'Counted: ${entered.toStringAsFixed(2)} $_currencyCode';
+      final comment = _commentController.text.trim();
+      await widget.database.addTransaction(
+        kind: TransactionKind.cashCount,
+        amount: entered - _balance.cashIn(_currencyCode),
+        currency: _currencyCode,
+        comment: comment.isEmpty ? counted : '$counted - $comment',
+        date: _date,
+      );
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final codes = widget.currencies.map((c) => c.shortName).toList();
+    final codes = currencyCodesWithSelected(widget.currencies, _currencyCode);
     final hasInput = _amountController.text.trim().isNotEmpty;
 
     return Form(
@@ -108,20 +139,28 @@ class _CashCountFormState extends State<_CashCountForm> {
           CurrencyAmountInput(
             currencyCodes: codes,
             selectedCurrencyCode: _currencyCode,
-            onCurrencySelected: (code) => setState(() => _currencyCode = code),
+            onCurrencySelected:
+                _isEdit ? null : (code) => setState(() => _currencyCode = code),
             amountController: _amountController,
-            amountLabel: 'Counted cash',
+            readOnly: _isEdit,
+            autofocus: !_isEdit,
+            allowNegative: _isEdit,
+            amountLabel: _isEdit ? 'Correction' : 'Counted cash',
             onAmountChanged: (_) => setState(() {}),
-            amountValidator: (value) =>
-                (value ?? '').trim().isEmpty ? 'Please enter an amount' : null,
+            amountValidator: _isEdit
+                ? null
+                : (value) => (value ?? '').trim().isEmpty
+                    ? 'Please enter an amount'
+                    : null,
           ),
-          CashCountHint(
-            expected: _balance.cashIn(_currencyCode),
-            currencyCode: _currencyCode,
-            counted: hasInput
-                ? CurrencyValue.safeConvertToDouble(_amountController.text)
-                : null,
-          ),
+          if (!_isEdit)
+            CashCountHint(
+              expected: _balance.cashIn(_currencyCode),
+              currencyCode: _currencyCode,
+              counted: hasInput
+                  ? CurrencyValue.safeConvertToDouble(_amountController.text)
+                  : null,
+            ),
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
           const SizedBox(height: 8),
@@ -133,7 +172,7 @@ class _CashCountFormState extends State<_CashCountForm> {
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: const Text('Save Count'),
+            label: Text(_isEdit ? 'Update Count' : 'Save Count'),
           ),
         ],
       ),

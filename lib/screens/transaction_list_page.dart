@@ -3,9 +3,10 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
+import '../utils/transaction_kind.dart';
 import '../widgets/tag_filter_bar.dart';
 import 'balance_page.dart';
-import 'transaction_item_page.dart';
+import 'transaction_navigation.dart';
 
 class TransactionListPage extends StatelessWidget {
   final AppDatabase database;
@@ -66,8 +67,7 @@ class TransactionListPage extends StatelessWidget {
                       child: FloatingActionButton(
                         heroTag: 'expenses_fab',
                         tooltip: 'Add Entry',
-                        onPressed: () =>
-                            _openItem(context, null, currencies, transactions),
+                        onPressed: () => showNewEntryPicker(context, database),
                         child: const Icon(Icons.add),
                       ),
                     ),
@@ -75,24 +75,6 @@ class TransactionListPage extends StatelessWidget {
           },
         );
       },
-    );
-  }
-
-  void _openItem(
-    BuildContext context,
-    MoneyTransaction? transaction,
-    List<Currency> currencies,
-    List<MoneyTransaction> transactions,
-  ) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => TransactionItemPage(
-          database: database,
-          transaction: transaction,
-          currencies: currencies,
-          transactions: transactions,
-        ),
-      ),
     );
   }
 }
@@ -251,16 +233,8 @@ class _EntriesViewState extends State<_EntriesView> {
                     return _EntryTile(
                       transaction: t,
                       home: toHome(t),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => TransactionItemPage(
-                            database: widget.database,
-                            transaction: t,
-                            currencies: widget.currencies,
-                            transactions: widget.transactions,
-                          ),
-                        ),
-                      ),
+                      onTap: () =>
+                          openTransaction(context, widget.database, t),
                       onDelete: () => _delete(context, t),
                     );
                   },

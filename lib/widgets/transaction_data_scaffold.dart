@@ -6,6 +6,7 @@ import '../database/database.dart';
 class TransactionDataScaffold extends StatelessWidget {
   final AppDatabase database;
   final String title;
+  final List<Widget> actions;
   final Widget Function(
     BuildContext context,
     List<Currency> currencies,
@@ -16,6 +17,7 @@ class TransactionDataScaffold extends StatelessWidget {
     super.key,
     required this.database,
     required this.title,
+    this.actions = const [],
     required this.builder,
   });
 
@@ -33,6 +35,7 @@ class TransactionDataScaffold extends StatelessWidget {
             return Scaffold(
               appBar: AppBar(
                 title: Text(title),
+                actions: actions,
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
               ),
               body: loading

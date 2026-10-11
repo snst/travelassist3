@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
-import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
+import '../utils/currency_codes.dart';
+import '../utils/transaction_kind.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
+import '../widgets/delete_entry_button.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
 class DepositPage extends StatelessWidget {
   final AppDatabase database;
 
-  const DepositPage({super.key, required this.database});
+  /// An existing deposit to edit; null to add a new one.
+  final MoneyTransaction? transaction;
+
+  const DepositPage({super.key, required this.database, this.transaction});
 
   @override
   Widget build(BuildContext context) {
+    final existing = transaction;
     return TransactionDataScaffold(
       database: database,
-      title: 'Add Deposit',
+      title: existing == null
+          ? 'Add Deposit'
+          : 'Edit ${transactionLabel(TransactionKind.deposit)}',
+      actions: [
+        if (existing != null)
+          DeleteEntryButton(database: database, transaction: existing),
+      ],
       builder: (context, currencies, transactions) => _DepositForm(
         database: database,
         currencies: currencies,
         transactions: transactions,
+        existing: existing,
       ),
     );
   }
@@ -32,11 +45,13 @@ class _DepositForm extends StatefulWidget {
 
   /// All stored transactions, newest first; used to pick the default currency.
   final List<MoneyTransaction> transactions;
+  final MoneyTransaction? existing;
 
   const _DepositForm({
     required this.database,
     required this.currencies,
     required this.transactions,
+    required this.existing,
   });
 
   @override
@@ -45,20 +60,22 @@ class _DepositForm extends StatefulWidget {
 
 class _DepositFormState extends State<_DepositForm> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _commentController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _commentController;
   late String _currencyCode;
-  DateTime _date = DateTime.now();
+  late DateTime _date;
 
   @override
   void initState() {
     super.initState();
-    final codes = widget.currencies.map((c) => c.shortName).toList();
-    final lastUsed =
-        widget.transactions.isNotEmpty ? widget.transactions.first.currency : null;
-    _currencyCode = lastUsed != null && codes.contains(lastUsed)
-        ? lastUsed
-        : Balance.homeCurrencyOf(widget.currencies)?.shortName ?? codes.first;
+    final t = widget.existing;
+    _amountController = TextEditingController(
+      text: t == null ? '' : t.amount.toStringAsFixed(2),
+    );
+    _commentController = TextEditingController(text: t?.comment ?? '');
+    _currencyCode = t?.currency ??
+        defaultCurrencyCode(widget.currencies, widget.transactions);
+    _date = t?.date ?? DateTime.now();
   }
 
   @override
@@ -70,19 +87,33 @@ class _DepositFormState extends State<_DepositForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    await widget.database.addTransaction(
-      kind: TransactionKind.deposit,
-      amount: CurrencyValue.safeConvertToDouble(_amountController.text),
-      currency: _currencyCode,
-      comment: _commentController.text.trim(),
-      date: _date,
-    );
+    final amount = CurrencyValue.safeConvertToDouble(_amountController.text);
+    final comment = _commentController.text.trim();
+    final existing = widget.existing;
+    if (existing == null) {
+      await widget.database.addTransaction(
+        kind: TransactionKind.deposit,
+        amount: amount,
+        currency: _currencyCode,
+        comment: comment,
+        date: _date,
+      );
+    } else {
+      await widget.database.updateTransactionEntry(
+        existing.copyWith(
+          amount: amount,
+          currency: _currencyCode,
+          comment: comment,
+          date: _date,
+        ),
+      );
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final codes = widget.currencies.map((c) => c.shortName).toList();
+    final codes = currencyCodesWithSelected(widget.currencies, _currencyCode);
 
     return Form(
       key: _formKey,
@@ -99,6 +130,7 @@ class _DepositFormState extends State<_DepositForm> {
             selectedCurrencyCode: _currencyCode,
             onCurrencySelected: (code) => setState(() => _currencyCode = code),
             amountController: _amountController,
+            autofocus: widget.existing == null,
             onAmountChanged: null,
           ),
           const SizedBox(height: 20),
@@ -112,7 +144,7 @@ class _DepositFormState extends State<_DepositForm> {
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: const Text('Save Deposit'),
+            label: Text(widget.existing == null ? 'Save Deposit' : 'Update Deposit'),
           ),
         ],
       ),

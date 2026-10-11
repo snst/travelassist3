@@ -1,29 +1,42 @@
 import 'package:flutter/material.dart';
-import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
+import '../utils/currency_codes.dart';
 import '../utils/payment_methods.dart';
+import '../utils/transaction_kind.dart';
 import '../widgets/add_payment_method_dialog.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
+import '../widgets/delete_entry_button.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
 class WithdrawalPage extends StatelessWidget {
   final AppDatabase database;
 
-  const WithdrawalPage({super.key, required this.database});
+  /// An existing withdrawal to edit; null to add a new one.
+  final MoneyTransaction? transaction;
+
+  const WithdrawalPage({super.key, required this.database, this.transaction});
 
   @override
   Widget build(BuildContext context) {
+    final existing = transaction;
     return TransactionDataScaffold(
       database: database,
-      title: 'Add ATM Withdrawal',
+      title: existing == null
+          ? 'Add ATM Withdrawal'
+          : 'Edit ${transactionLabel(TransactionKind.withdrawal)}',
+      actions: [
+        if (existing != null)
+          DeleteEntryButton(database: database, transaction: existing),
+      ],
       builder: (context, currencies, transactions) => _WithdrawalForm(
         database: database,
         currencies: currencies,
         transactions: transactions,
+        existing: existing,
       ),
     );
   }
@@ -35,11 +48,13 @@ class _WithdrawalForm extends StatefulWidget {
 
   /// All stored transactions, newest first; used for default currency and method.
   final List<MoneyTransaction> transactions;
+  final MoneyTransaction? existing;
 
   const _WithdrawalForm({
     required this.database,
     required this.currencies,
     required this.transactions,
+    required this.existing,
   });
 
   @override
@@ -48,11 +63,11 @@ class _WithdrawalForm extends StatefulWidget {
 
 class _WithdrawalFormState extends State<_WithdrawalForm> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _commentController = TextEditingController();
-  final _methodController = TextEditingController();
+  late final TextEditingController _amountController;
+  late final TextEditingController _commentController;
+  late final TextEditingController _methodController;
   late String _currencyCode;
-  DateTime _date = DateTime.now();
+  late DateTime _date;
 
   List<String> get _methods => paymentMethodSuggestions(
         transactions: widget.transactions,
@@ -63,14 +78,19 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
   @override
   void initState() {
     super.initState();
-    final codes = widget.currencies.map((c) => c.shortName).toList();
-    final lastUsed =
-        widget.transactions.isNotEmpty ? widget.transactions.first.currency : null;
-    _currencyCode = lastUsed != null && codes.contains(lastUsed)
-        ? lastUsed
-        : Balance.homeCurrencyOf(widget.currencies)?.shortName ?? codes.first;
-    final methods = _methods;
-    if (methods.isNotEmpty) _methodController.text = methods.first;
+    final t = widget.existing;
+    _amountController = TextEditingController(
+      text: t == null ? '' : t.amount.toStringAsFixed(2),
+    );
+    _commentController = TextEditingController(text: t?.comment ?? '');
+    _methodController = TextEditingController(text: t?.method ?? '');
+    _currencyCode = t?.currency ??
+        defaultCurrencyCode(widget.currencies, widget.transactions);
+    _date = t?.date ?? DateTime.now();
+    if (t == null) {
+      final methods = _methods;
+      if (methods.isNotEmpty) _methodController.text = methods.first;
+    }
   }
 
   @override
@@ -90,20 +110,36 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    await widget.database.addTransaction(
-      kind: TransactionKind.withdrawal,
-      amount: CurrencyValue.safeConvertToDouble(_amountController.text),
-      currency: _currencyCode,
-      method: _methodController.text.trim(),
-      comment: _commentController.text.trim(),
-      date: _date,
-    );
+    final amount = CurrencyValue.safeConvertToDouble(_amountController.text);
+    final method = _methodController.text.trim();
+    final comment = _commentController.text.trim();
+    final existing = widget.existing;
+    if (existing == null) {
+      await widget.database.addTransaction(
+        kind: TransactionKind.withdrawal,
+        amount: amount,
+        currency: _currencyCode,
+        method: method,
+        comment: comment,
+        date: _date,
+      );
+    } else {
+      await widget.database.updateTransactionEntry(
+        existing.copyWith(
+          amount: amount,
+          currency: _currencyCode,
+          method: method,
+          comment: comment,
+          date: _date,
+        ),
+      );
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final codes = widget.currencies.map((c) => c.shortName).toList();
+    final codes = currencyCodesWithSelected(widget.currencies, _currencyCode);
 
     return Form(
       key: _formKey,
@@ -120,6 +156,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
             selectedCurrencyCode: _currencyCode,
             onCurrencySelected: (code) => setState(() => _currencyCode = code),
             amountController: _amountController,
+            autofocus: widget.existing == null,
             onAmountChanged: null,
           ),
           const SizedBox(height: 20),
@@ -141,7 +178,9 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: const Text('Save Withdrawal'),
+            label: Text(
+              widget.existing == null ? 'Save Withdrawal' : 'Update Withdrawal',
+            ),
           ),
         ],
       ),

@@ -1,25 +1,37 @@
 import '../database/database.dart';
 
-/// Payment methods used before for [kind], most frequent first.
-/// [current] is always included so a freshly entered method stays visible.
+/// Payment methods for [kind]: methods used by expenses and withdrawals, most
+/// used within [kind] first. [current] is always included so a freshly entered
+/// method stays visible.
 List<String> paymentMethodSuggestions({
   required List<MoneyTransaction> transactions,
   required TransactionKind kind,
   String current = '',
 }) {
-  final counts = <String, int>{};
+  final own = <String, int>{};
+  final all = <String, int>{};
   for (final t in transactions) {
     final method = t.method.trim();
-    if (t.type == kind && method.isNotEmpty) {
-      counts[method] = (counts[method] ?? 0) + 1;
-    }
+    final usesMethod =
+        t.type == TransactionKind.expense || t.type == TransactionKind.withdrawal;
+    if (!usesMethod || method.isEmpty) continue;
+    all[method] = (all[method] ?? 0) + 1;
+    if (t.type == kind) own[method] = (own[method] ?? 0) + 1;
   }
-  if (kind == TransactionKind.expense) counts.putIfAbsent(cashMethod, () => 0);
+  if (kind == TransactionKind.expense) all.putIfAbsent(cashMethod, () => 0);
+  // Cash is what a withdrawal produces, not a way to pay for it.
+  if (kind == TransactionKind.withdrawal) all.remove(cashMethod);
 
   final trimmed = current.trim();
-  if (trimmed.isNotEmpty && !counts.containsKey(trimmed)) {
-    counts[trimmed] = 999;
+  if (trimmed.isNotEmpty && !all.containsKey(trimmed)) {
+    all[trimmed] = 0;
+    own[trimmed] = 999;
   }
 
-  return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+  int ownCount(String m) => own[m] ?? 0;
+  return all.keys.toList()
+    ..sort((a, b) {
+      final byOwn = ownCount(b).compareTo(ownCount(a));
+      return byOwn != 0 ? byOwn : all[b]!.compareTo(all[a]!);
+    });
 }
