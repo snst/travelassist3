@@ -13,7 +13,7 @@ void main() {
     String currency, {
     String method = '',
     DateTime? date,
-    int includeInAverage = 1,
+    int days = 1,
     TransactionState state = TransactionState.paid,
   }) {
     return MoneyTransaction(
@@ -25,7 +25,7 @@ void main() {
       comment: '',
       tags: '',
       date: date ?? DateTime(2026, 5, 1, 12),
-      includeInAverage: includeInAverage,
+      days: days,
       state: state.index,
       link: '',
     );
@@ -49,7 +49,7 @@ void main() {
         tx(TransactionKind.withdrawal, 200, 'USD', method: 'Visa', date: day1),
         tx(TransactionKind.expense, 50, 'USD', method: cashMethod, date: day1),
         tx(TransactionKind.expense, 10, 'EUR',
-            method: 'Visa', date: day2, includeInAverage: 0),
+            method: 'Visa', date: day2, days: 0),
         // Counted 140 USD while 150 USD were expected.
         tx(TransactionKind.cashCount, -10, 'USD', date: day2),
       ],
@@ -97,7 +97,7 @@ void main() {
       currencies: [eur, usd],
       transactions: [
         tx(TransactionKind.expense, 30, 'EUR',
-            method: cashMethod, includeInAverage: 3),
+            method: cashMethod, days: 3),
       ],
     );
 

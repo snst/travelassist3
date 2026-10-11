@@ -39,8 +39,9 @@ class MoneyTransactions extends Table {
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
-  // Number of days the expense counts in the daily average: 0 = not included, 1 = default.
-  IntColumn get includeInAverage => integer().withDefault(const Constant(1))();
+  // Number of days the entry covers: for expenses the days it counts in the daily average
+  // (0 = not included, 1 = default), for e.g. a hotel booking its length.
+  IntColumn get days => integer().withDefault(const Constant(1))();
   IntColumn get state => integer().withDefault(const Constant(2))(); // TransactionState.index, default paid
   TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
 }
@@ -51,7 +52,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -70,14 +71,15 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(moneyTransactions);
         }
         // Tables created above (from < 4) already have the current layout. Older ones are
-        // rebuilt once: link is new before v6, and is_planned (v5-v7) became the state column.
-        // includeInAverage changed from a bool to a day count; the old 0/1 values carry
-        // over unchanged, but the rebuild drops the bool CHECK.
+        // rebuilt once: link is new before v6, is_planned (v5-v7) became the state column and
+        // include_in_average became days. include_in_average used to be a bool; the old 0/1
+        // values carry over unchanged, but the rebuild drops the bool CHECK.
         if (from >= 4 && from < 8) {
           await m.alterTable(
             TableMigration(
               moneyTransactions,
               columnTransformer: {
+                moneyTransactions.days: const CustomExpression<int>('include_in_average'),
                 if (from >= 5)
                   moneyTransactions.state: const CustomExpression<int>(
                     'CASE WHEN is_planned = 1 THEN 0 ELSE 2 END',
@@ -86,8 +88,16 @@ class AppDatabase extends _$AppDatabase {
               newColumns: [
                 if (from < 6) moneyTransactions.link,
                 moneyTransactions.state,
+                moneyTransactions.days,
               ],
             ),
+          );
+        }
+        if (from == 8) {
+          await m.renameColumn(
+            moneyTransactions,
+            'include_in_average',
+            moneyTransactions.days,
           );
         }
       },
@@ -354,7 +364,7 @@ class AppDatabase extends _$AppDatabase {
     String comment = '',
     List<String> tags = const [],
     DateTime? date,
-    int includeInAverage = 1,
+    int days = 1,
     TransactionState state = TransactionState.paid,
     String link = '',
   }) {
@@ -367,7 +377,7 @@ class AppDatabase extends _$AppDatabase {
         comment: Value(comment),
         tags: Value(tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',')),
         date: Value(date ?? DateTime.now()),
-        includeInAverage: Value(includeInAverage),
+        days: Value(days),
         state: Value(state.index),
         link: Value(link),
       ),

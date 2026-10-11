@@ -1200,12 +1200,12 @@ class $MoneyTransactionsTable extends MoneyTransactions
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
-  static const VerificationMeta _includeInAverageMeta = const VerificationMeta(
-    'includeInAverage',
+  static const VerificationMeta _daysMeta = const VerificationMeta(
+    'days',
   );
   @override
-  late final GeneratedColumn<int> includeInAverage = GeneratedColumn<int>(
-    'include_in_average',
+  late final GeneratedColumn<int> days = GeneratedColumn<int>(
+    'days',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -1244,7 +1244,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     comment,
     tags,
     date,
-    includeInAverage,
+    days,
     state,
     link,
   ];
@@ -1309,12 +1309,12 @@ class $MoneyTransactionsTable extends MoneyTransactions
         date.isAcceptableOrUnknown(data['date']!, _dateMeta),
       );
     }
-    if (data.containsKey('include_in_average')) {
+    if (data.containsKey('days')) {
       context.handle(
-        _includeInAverageMeta,
-        includeInAverage.isAcceptableOrUnknown(
-          data['include_in_average']!,
-          _includeInAverageMeta,
+        _daysMeta,
+        days.isAcceptableOrUnknown(
+          data['days']!,
+          _daysMeta,
         ),
       );
     }
@@ -1371,9 +1371,9 @@ class $MoneyTransactionsTable extends MoneyTransactions
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
-      includeInAverage: attachedDatabase.typeMapping.read(
+      days: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}include_in_average'],
+        data['${effectivePrefix}days'],
       )!,
       state: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -1402,7 +1402,7 @@ class MoneyTransaction extends DataClass
   final String comment;
   final String tags;
   final DateTime date;
-  final int includeInAverage;
+  final int days;
   final int state;
   final String link;
   const MoneyTransaction({
@@ -1414,7 +1414,7 @@ class MoneyTransaction extends DataClass
     required this.comment,
     required this.tags,
     required this.date,
-    required this.includeInAverage,
+    required this.days,
     required this.state,
     required this.link,
   });
@@ -1429,7 +1429,7 @@ class MoneyTransaction extends DataClass
     map['comment'] = Variable<String>(comment);
     map['tags'] = Variable<String>(tags);
     map['date'] = Variable<DateTime>(date);
-    map['include_in_average'] = Variable<int>(includeInAverage);
+    map['days'] = Variable<int>(days);
     map['state'] = Variable<int>(state);
     map['link'] = Variable<String>(link);
     return map;
@@ -1445,7 +1445,7 @@ class MoneyTransaction extends DataClass
       comment: Value(comment),
       tags: Value(tags),
       date: Value(date),
-      includeInAverage: Value(includeInAverage),
+      days: Value(days),
       state: Value(state),
       link: Value(link),
     );
@@ -1465,7 +1465,7 @@ class MoneyTransaction extends DataClass
       comment: serializer.fromJson<String>(json['comment']),
       tags: serializer.fromJson<String>(json['tags']),
       date: serializer.fromJson<DateTime>(json['date']),
-      includeInAverage: serializer.fromJson<int>(json['includeInAverage']),
+      days: serializer.fromJson<int>(json['days']),
       state: serializer.fromJson<int>(json['state']),
       link: serializer.fromJson<String>(json['link']),
     );
@@ -1482,7 +1482,7 @@ class MoneyTransaction extends DataClass
       'comment': serializer.toJson<String>(comment),
       'tags': serializer.toJson<String>(tags),
       'date': serializer.toJson<DateTime>(date),
-      'includeInAverage': serializer.toJson<int>(includeInAverage),
+      'days': serializer.toJson<int>(days),
       'state': serializer.toJson<int>(state),
       'link': serializer.toJson<String>(link),
     };
@@ -1497,7 +1497,7 @@ class MoneyTransaction extends DataClass
     String? comment,
     String? tags,
     DateTime? date,
-    int? includeInAverage,
+    int? days,
     int? state,
     String? link,
   }) => MoneyTransaction(
@@ -1509,7 +1509,7 @@ class MoneyTransaction extends DataClass
     comment: comment ?? this.comment,
     tags: tags ?? this.tags,
     date: date ?? this.date,
-    includeInAverage: includeInAverage ?? this.includeInAverage,
+    days: days ?? this.days,
     state: state ?? this.state,
     link: link ?? this.link,
   );
@@ -1523,9 +1523,9 @@ class MoneyTransaction extends DataClass
       comment: data.comment.present ? data.comment.value : this.comment,
       tags: data.tags.present ? data.tags.value : this.tags,
       date: data.date.present ? data.date.value : this.date,
-      includeInAverage: data.includeInAverage.present
-          ? data.includeInAverage.value
-          : this.includeInAverage,
+      days: data.days.present
+          ? data.days.value
+          : this.days,
       state: data.state.present ? data.state.value : this.state,
       link: data.link.present ? data.link.value : this.link,
     );
@@ -1542,7 +1542,7 @@ class MoneyTransaction extends DataClass
           ..write('comment: $comment, ')
           ..write('tags: $tags, ')
           ..write('date: $date, ')
-          ..write('includeInAverage: $includeInAverage, ')
+          ..write('days: $days, ')
           ..write('state: $state, ')
           ..write('link: $link')
           ..write(')'))
@@ -1559,7 +1559,7 @@ class MoneyTransaction extends DataClass
     comment,
     tags,
     date,
-    includeInAverage,
+    days,
     state,
     link,
   );
@@ -1575,7 +1575,7 @@ class MoneyTransaction extends DataClass
           other.comment == this.comment &&
           other.tags == this.tags &&
           other.date == this.date &&
-          other.includeInAverage == this.includeInAverage &&
+          other.days == this.days &&
           other.state == this.state &&
           other.link == this.link);
 }
@@ -1589,7 +1589,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
   final Value<String> comment;
   final Value<String> tags;
   final Value<DateTime> date;
-  final Value<int> includeInAverage;
+  final Value<int> days;
   final Value<int> state;
   final Value<String> link;
   const MoneyTransactionsCompanion({
@@ -1601,7 +1601,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.comment = const Value.absent(),
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
-    this.includeInAverage = const Value.absent(),
+    this.days = const Value.absent(),
     this.state = const Value.absent(),
     this.link = const Value.absent(),
   });
@@ -1614,7 +1614,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.comment = const Value.absent(),
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
-    this.includeInAverage = const Value.absent(),
+    this.days = const Value.absent(),
     this.state = const Value.absent(),
     this.link = const Value.absent(),
   }) : amount = Value(amount),
@@ -1628,7 +1628,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Expression<String>? comment,
     Expression<String>? tags,
     Expression<DateTime>? date,
-    Expression<int>? includeInAverage,
+    Expression<int>? days,
     Expression<int>? state,
     Expression<String>? link,
   }) {
@@ -1641,7 +1641,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       if (comment != null) 'comment': comment,
       if (tags != null) 'tags': tags,
       if (date != null) 'date': date,
-      if (includeInAverage != null) 'include_in_average': includeInAverage,
+      if (days != null) 'days': days,
       if (state != null) 'state': state,
       if (link != null) 'link': link,
     });
@@ -1656,7 +1656,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Value<String>? comment,
     Value<String>? tags,
     Value<DateTime>? date,
-    Value<int>? includeInAverage,
+    Value<int>? days,
     Value<int>? state,
     Value<String>? link,
   }) {
@@ -1669,7 +1669,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       comment: comment ?? this.comment,
       tags: tags ?? this.tags,
       date: date ?? this.date,
-      includeInAverage: includeInAverage ?? this.includeInAverage,
+      days: days ?? this.days,
       state: state ?? this.state,
       link: link ?? this.link,
     );
@@ -1702,8 +1702,8 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
-    if (includeInAverage.present) {
-      map['include_in_average'] = Variable<int>(includeInAverage.value);
+    if (days.present) {
+      map['days'] = Variable<int>(days.value);
     }
     if (state.present) {
       map['state'] = Variable<int>(state.value);
@@ -1725,7 +1725,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
           ..write('comment: $comment, ')
           ..write('tags: $tags, ')
           ..write('date: $date, ')
-          ..write('includeInAverage: $includeInAverage, ')
+          ..write('days: $days, ')
           ..write('state: $state, ')
           ..write('link: $link')
           ..write(')'))

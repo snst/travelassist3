@@ -108,13 +108,13 @@ class Balance {
           final method = t.method.trim();
           balance.expenses.add(code, amount, isCash: t.isCash, method: method);
           if (t.isCash) balance.cashOnHand.add(code, amount, sign: -1);
-          if (t.includeInAverage > 0) {
+          if (t.days > 0) {
             averaged.add(code, amount, isCash: t.isCash, method: method);
             // An expense counted for N days covers N days of the average range.
             final coveredEnd = DateTime.utc(
               t.date.year,
               t.date.month,
-              t.date.day + t.includeInAverage - 1,
+              t.date.day + t.days - 1,
             );
             if (averageEnd == null || coveredEnd.isAfter(averageEnd)) {
               averageEnd = coveredEnd;

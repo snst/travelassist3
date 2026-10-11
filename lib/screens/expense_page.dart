@@ -97,7 +97,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
-    _averageDays = t?.includeInAverage ?? 1;
+    _averageDays = t?.days ?? 1;
     _state = t?.transactionState ?? TransactionState.paid;
     if (t == null) _methodController.text = _methods.first;
   }
@@ -145,7 +145,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         comment: comment,
         tags: _tags,
         date: _date,
-        includeInAverage: _averageDays,
+        days: _averageDays,
         state: _state,
         link: _links.joined,
       );
@@ -158,7 +158,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           comment: comment,
           tags: _tags.join(','),
           date: _date,
-          includeInAverage: _averageDays,
+          days: _averageDays,
           state: _state.index,
           link: _links.joined,
         ),
