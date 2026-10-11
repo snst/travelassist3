@@ -6,6 +6,7 @@ import 'cash_count_page.dart';
 import 'currency_settings_screen.dart';
 import 'deposit_page.dart';
 import 'expense_page.dart';
+import 'hotel_calendar_page.dart';
 import 'hotel_page.dart';
 import 'note_list_page.dart';
 import 'todo_list_page.dart';
@@ -25,6 +26,7 @@ final _features = <_Feature>[
   _Feature('Entries', Icons.receipt_long, (db) => TransactionListPage(database: db)),
   _Feature('Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
   _Feature('Hotel', Icons.hotel, (db) => HotelPage(database: db)),
+  _Feature('Hotels', Icons.calendar_month, (db) => HotelCalendarPage(database: db)),
   _Feature('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
   _Feature('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
   _Feature('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
