@@ -237,25 +237,30 @@ class _DayRow extends StatelessWidget {
         children: [
           Container(
             width: _dateColumnWidth,
-            padding: const EdgeInsets.only(top: 6),
+            height: _rowHeight - 1,
+            alignment: Alignment.center,
             decoration: isToday ? BoxDecoration(color: scheme.primaryContainer) : null,
-            child: Column(
-              children: [
-                Text(
-                  formatDay(day).split(',').first,
-                  style: theme.labelSmall?.copyWith(color: scheme.outline),
-                ),
-                Text(
-                  '${day.day}',
-                  style: theme.titleMedium?.copyWith(
-                    fontWeight: isToday ? FontWeight.bold : null,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    formatDay(day).split(',').first,
+                    style: theme.labelSmall?.copyWith(color: scheme.outline),
                   ),
-                ),
-                Text(
-                  formatDay(day).split(' ')[2],
-                  style: theme.labelSmall?.copyWith(color: scheme.outline),
-                ),
-              ],
+                  Text(
+                    '${day.day}',
+                    style: theme.titleMedium?.copyWith(
+                      fontWeight: isToday ? FontWeight.bold : null,
+                    ),
+                  ),
+                  Text(
+                    formatDay(day).split(' ')[2],
+                    style: theme.labelSmall?.copyWith(color: scheme.outline),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

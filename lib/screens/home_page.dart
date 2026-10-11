@@ -14,12 +14,18 @@ import 'todo_list_page.dart';
 import 'transaction_list_page.dart';
 import 'withdrawal_page.dart';
 
+enum _FeatureKind { add, view }
+
 class _Feature {
   final String label;
   final IconData icon;
+  final _FeatureKind kind;
   final Widget Function(AppDatabase database) builder;
 
-  const _Feature(this.label, this.icon, this.builder);
+  const _Feature.add(this.label, this.icon, this.builder)
+      : kind = _FeatureKind.add;
+  const _Feature.view(this.label, this.icon, this.builder)
+      : kind = _FeatureKind.view;
 }
 
 class _FeatureGroup {
@@ -33,25 +39,25 @@ const _columns = 4;
 
 final _groups = <_FeatureGroup>[
   _FeatureGroup('Spending', [
-    _Feature('Calculator', Icons.calculate, (db) => CalculatorPage(database: db)),
-    _Feature('Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
-    _Feature('Entries', Icons.receipt_long, (db) => TransactionListPage(database: db)),
-    _Feature('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
+    _Feature.view('Calculator', Icons.calculate, (db) => CalculatorPage(database: db)),
+    _Feature.add('Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
+    _Feature.view('Entries', Icons.receipt_long, (db) => TransactionListPage(database: db)),
+    _Feature.view('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
   ]),
   _FeatureGroup('Cash', [
-    _Feature('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
-    _Feature('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
-    _Feature('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
-    _Feature('Currencies', Icons.currency_exchange, (db) => CurrencySettingsScreen(database: db)),
+    _Feature.add('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
+    _Feature.add('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
+    _Feature.add('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
+    _Feature.view('Currencies', Icons.currency_exchange, (db) => CurrencySettingsScreen(database: db)),
   ]),
   _FeatureGroup('Stay', [
-    _Feature('Hotel', Icons.hotel, (db) => HotelPage(database: db)),
-    _Feature('Hotels', Icons.calendar_month, (db) => HotelCalendarPage(database: db)),
+    _Feature.add('Hotel', Icons.hotel, (db) => HotelPage(database: db)),
+    _Feature.view('Hotels', Icons.calendar_month, (db) => HotelCalendarPage(database: db)),
   ]),
   _FeatureGroup('Organize', [
-    _Feature('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
-    _Feature('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
-    _Feature('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
+    _Feature.view('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
+    _Feature.view('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
+    _Feature.add('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
   ]),
 ];
 
@@ -142,27 +148,55 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isAdd = feature.kind == _FeatureKind.add;
+    final background =
+        isAdd ? scheme.primaryContainer : scheme.surfaceContainerHigh;
+    final foreground =
+        isAdd ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
     return Card(
       margin: const EdgeInsets.all(3),
       clipBehavior: Clip.antiAlias,
-      color: scheme.primaryContainer,
+      elevation: 0,
+      color: background,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
           height: 76,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              Icon(feature.icon, size: 28, color: scheme.onPrimaryContainer),
-              const SizedBox(height: 6),
-              Text(
-                feature.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: scheme.onPrimaryContainer,
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(feature.icon, size: 28, color: foreground),
+                    const SizedBox(height: 6),
+                    Text(
+                      feature.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(color: foreground),
                     ),
+                  ],
+                ),
               ),
+              if (isAdd)
+                Positioned(
+                  top: 5,
+                  right: 5,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.add, size: 12, color: scheme.onPrimary),
+                  ),
+                ),
             ],
           ),
         ),
