@@ -1204,16 +1204,13 @@ class $MoneyTransactionsTable extends MoneyTransactions
     'includeInAverage',
   );
   @override
-  late final GeneratedColumn<bool> includeInAverage = GeneratedColumn<bool>(
+  late final GeneratedColumn<int> includeInAverage = GeneratedColumn<int>(
     'include_in_average',
     aliasedName,
     false,
-    type: DriftSqlType.bool,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("include_in_average" IN (0, 1))',
-    ),
-    defaultValue: const Constant(true),
+    defaultValue: const Constant(1),
   );
   static const VerificationMeta _isPlannedMeta = const VerificationMeta(
     'isPlanned',
@@ -1378,7 +1375,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
         data['${effectivePrefix}date'],
       )!,
       includeInAverage: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
+        DriftSqlType.int,
         data['${effectivePrefix}include_in_average'],
       )!,
       isPlanned: attachedDatabase.typeMapping.read(
@@ -1408,7 +1405,7 @@ class MoneyTransaction extends DataClass
   final String comment;
   final String tags;
   final DateTime date;
-  final bool includeInAverage;
+  final int includeInAverage;
   final bool isPlanned;
   final String link;
   const MoneyTransaction({
@@ -1435,7 +1432,7 @@ class MoneyTransaction extends DataClass
     map['comment'] = Variable<String>(comment);
     map['tags'] = Variable<String>(tags);
     map['date'] = Variable<DateTime>(date);
-    map['include_in_average'] = Variable<bool>(includeInAverage);
+    map['include_in_average'] = Variable<int>(includeInAverage);
     map['is_planned'] = Variable<bool>(isPlanned);
     map['link'] = Variable<String>(link);
     return map;
@@ -1471,7 +1468,7 @@ class MoneyTransaction extends DataClass
       comment: serializer.fromJson<String>(json['comment']),
       tags: serializer.fromJson<String>(json['tags']),
       date: serializer.fromJson<DateTime>(json['date']),
-      includeInAverage: serializer.fromJson<bool>(json['includeInAverage']),
+      includeInAverage: serializer.fromJson<int>(json['includeInAverage']),
       isPlanned: serializer.fromJson<bool>(json['isPlanned']),
       link: serializer.fromJson<String>(json['link']),
     );
@@ -1488,7 +1485,7 @@ class MoneyTransaction extends DataClass
       'comment': serializer.toJson<String>(comment),
       'tags': serializer.toJson<String>(tags),
       'date': serializer.toJson<DateTime>(date),
-      'includeInAverage': serializer.toJson<bool>(includeInAverage),
+      'includeInAverage': serializer.toJson<int>(includeInAverage),
       'isPlanned': serializer.toJson<bool>(isPlanned),
       'link': serializer.toJson<String>(link),
     };
@@ -1503,7 +1500,7 @@ class MoneyTransaction extends DataClass
     String? comment,
     String? tags,
     DateTime? date,
-    bool? includeInAverage,
+    int? includeInAverage,
     bool? isPlanned,
     String? link,
   }) => MoneyTransaction(
@@ -1595,7 +1592,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
   final Value<String> comment;
   final Value<String> tags;
   final Value<DateTime> date;
-  final Value<bool> includeInAverage;
+  final Value<int> includeInAverage;
   final Value<bool> isPlanned;
   final Value<String> link;
   const MoneyTransactionsCompanion({
@@ -1634,7 +1631,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Expression<String>? comment,
     Expression<String>? tags,
     Expression<DateTime>? date,
-    Expression<bool>? includeInAverage,
+    Expression<int>? includeInAverage,
     Expression<bool>? isPlanned,
     Expression<String>? link,
   }) {
@@ -1662,7 +1659,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Value<String>? comment,
     Value<String>? tags,
     Value<DateTime>? date,
-    Value<bool>? includeInAverage,
+    Value<int>? includeInAverage,
     Value<bool>? isPlanned,
     Value<String>? link,
   }) {
@@ -1709,7 +1706,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       map['date'] = Variable<DateTime>(date.value);
     }
     if (includeInAverage.present) {
-      map['include_in_average'] = Variable<bool>(includeInAverage.value);
+      map['include_in_average'] = Variable<int>(includeInAverage.value);
     }
     if (isPlanned.present) {
       map['is_planned'] = Variable<bool>(isPlanned.value);

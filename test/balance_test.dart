@@ -13,7 +13,7 @@ void main() {
     String currency, {
     String method = '',
     DateTime? date,
-    bool includeInAverage = true,
+    int includeInAverage = 1,
     bool isPlanned = false,
   }) {
     return MoneyTransaction(
@@ -49,7 +49,7 @@ void main() {
         tx(TransactionKind.withdrawal, 200, 'USD', method: 'Visa', date: day1),
         tx(TransactionKind.expense, 50, 'USD', method: cashMethod, date: day1),
         tx(TransactionKind.expense, 10, 'EUR',
-            method: 'Visa', date: day2, includeInAverage: false),
+            method: 'Visa', date: day2, includeInAverage: 0),
         // Counted 140 USD while 150 USD were expected.
         tx(TransactionKind.cashCount, -10, 'USD', date: day2),
       ],
@@ -90,6 +90,19 @@ void main() {
     expect(balance.planned.card.total.value, 40);
     expect(balance.cashAfterPlanned.total.value, 50);
     expect(balance.days, 1);
+  });
+
+  test('Expense counted for several days extends the average range', () {
+    final balance = Balance.from(
+      currencies: [eur, usd],
+      transactions: [
+        tx(TransactionKind.expense, 30, 'EUR',
+            method: cashMethod, includeInAverage: 3),
+      ],
+    );
+
+    expect(balance.days, 3);
+    expect(balance.dailyAverage.total.total.value, 10);
   });
 
   test('Unknown currency is kept without conversion', () {

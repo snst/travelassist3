@@ -87,6 +87,7 @@ class Balance {
 
     DateTime? first;
     DateTime? last;
+    DateTime? averageEnd;
 
     for (final t in transactions) {
       final amount = CurrencyValue(t.amount, byCode[t.currency]);
@@ -107,8 +108,17 @@ class Balance {
           final method = t.method.trim();
           balance.expenses.add(code, amount, isCash: t.isCash, method: method);
           if (t.isCash) balance.cashOnHand.add(code, amount, sign: -1);
-          if (t.includeInAverage) {
+          if (t.includeInAverage > 0) {
             averaged.add(code, amount, isCash: t.isCash, method: method);
+            // An expense counted for N days covers N days of the average range.
+            final coveredEnd = DateTime.utc(
+              t.date.year,
+              t.date.month,
+              t.date.day + t.includeInAverage - 1,
+            );
+            if (averageEnd == null || coveredEnd.isAfter(averageEnd)) {
+              averageEnd = coveredEnd;
+            }
           }
         case TransactionKind.withdrawal:
           balance.cashOnHand.add(code, amount);
@@ -132,7 +142,8 @@ class Balance {
 
     if (first != null && last != null) {
       final start = DateTime.utc(first.year, first.month, first.day);
-      final end = DateTime.utc(last.year, last.month, last.day);
+      var end = DateTime.utc(last.year, last.month, last.day);
+      if (averageEnd != null && averageEnd.isAfter(end)) end = averageEnd;
       balance.days = end.difference(start).inDays + 1;
     }
     balance.dailyAverage = averaged.scaled(1 / balance.days);

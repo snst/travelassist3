@@ -9,7 +9,7 @@ import '../widgets/comment_input.dart';
 import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
-import '../widgets/expense_flag_switches.dart';
+import '../widgets/expense_options.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/payment_method_selector.dart';
 import '../widgets/tag_editor.dart';
@@ -74,7 +74,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   late List<String> _tags;
   String _tagDraft = '';
   late DateTime _date;
-  late bool _includeInAverage;
+  late int _averageDays;
   late bool _isPlanned;
 
   List<String> get _methods => paymentMethodSuggestions(
@@ -97,7 +97,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
-    _includeInAverage = t?.includeInAverage ?? true;
+    _averageDays = t?.includeInAverage ?? 1;
     _isPlanned = t?.isPlanned ?? false;
     if (t == null) _methodController.text = _methods.first;
   }
@@ -145,7 +145,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         comment: comment,
         tags: _tags,
         date: _date,
-        includeInAverage: _includeInAverage,
+        includeInAverage: _averageDays,
         isPlanned: _isPlanned,
         link: _links.joined,
       );
@@ -158,7 +158,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           comment: comment,
           tags: _tags.join(','),
           date: _date,
-          includeInAverage: _includeInAverage,
+          includeInAverage: _averageDays,
           isPlanned: _isPlanned,
           link: _links.joined,
         ),
@@ -221,12 +221,11 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             value: _date,
             onChanged: (date) => setState(() => _date = date),
           ),
-          ExpenseFlagSwitches(
+          ExpenseOptions(
             isPlanned: _isPlanned,
-            includeInAverage: _includeInAverage,
+            averageDays: _averageDays,
             onPlannedChanged: (v) => setState(() => _isPlanned = v),
-            onIncludeInAverageChanged: (v) =>
-                setState(() => _includeInAverage = v),
+            onAverageDaysChanged: (v) => setState(() => _averageDays = v),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(

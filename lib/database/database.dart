@@ -39,7 +39,8 @@ class MoneyTransactions extends Table {
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
-  BoolColumn get includeInAverage => boolean().withDefault(const Constant(true))();
+  // Number of days the expense counts in the daily average: 0 = not included, 1 = default.
+  IntColumn get includeInAverage => integer().withDefault(const Constant(1))();
   BoolColumn get isPlanned => boolean().withDefault(const Constant(false))(); // expenses only
   TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
 }
@@ -50,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -74,6 +75,11 @@ class AppDatabase extends _$AppDatabase {
         // Tables created above (from < 4) already include the link column.
         if (from >= 4 && from < 6) {
           await m.addColumn(moneyTransactions, moneyTransactions.link);
+        }
+        // includeInAverage changed from a bool to a day count; the old 0/1 values
+        // carry over unchanged, but the table must be rebuilt to drop the bool CHECK.
+        if (from >= 4 && from < 7) {
+          await m.alterTable(TableMigration(moneyTransactions));
         }
       },
     );
@@ -339,7 +345,7 @@ class AppDatabase extends _$AppDatabase {
     String comment = '',
     List<String> tags = const [],
     DateTime? date,
-    bool includeInAverage = true,
+    int includeInAverage = 1,
     bool isPlanned = false,
     String link = '',
   }) {
