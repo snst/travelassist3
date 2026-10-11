@@ -147,11 +147,11 @@ class _EntriesViewState extends State<_EntriesView> {
         CurrencyValue(t.amount, byCode[t.currency]).convertTo(home);
 
     final filteredTransactions = widget.transactions.where((t) {
-      return !t.isExpense || _selectedTags.every(t.tagList.contains);
+      return !t.isSpending || _selectedTags.every(t.tagList.contains);
     }).toList();
 
     final tagSet = <String>{..._selectedTags};
-    for (final t in filteredTransactions.where((t) => t.isExpense)) {
+    for (final t in filteredTransactions.where((t) => t.isSpending)) {
       tagSet.addAll(t.tagList);
     }
     final sortedTags = tagSet.toList()..sort();
@@ -159,7 +159,7 @@ class _EntriesViewState extends State<_EntriesView> {
     // Entries are sorted newest first; flatten into day headers and entries.
     final dayExpenses = <DateTime, CurrencyValue>{};
     for (final t
-        in filteredTransactions.where((t) => t.isExpense && !t.isPlanned)) {
+        in filteredTransactions.where((t) => t.isSpending && !t.isPending)) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
     }
@@ -283,6 +283,10 @@ class _EntryTile extends StatelessWidget {
         return 'Deposit';
       case TransactionKind.cashCount:
         return 'Cash Count';
+      case TransactionKind.hotel:
+        return transaction.tagList.isNotEmpty
+            ? 'Hotel ${transaction.tagList.map((t) => '#$t').join(' ')}'
+            : 'Hotel';
     }
   }
 
@@ -291,12 +295,15 @@ class _EntryTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = transaction;
     final detailStyle = TextStyle(color: scheme.outline, fontSize: 13);
-    final isOutgoing = t.isExpense;
+    final isOutgoing = t.isSpending;
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign = home.currency == null || home.currencyString != t.currency;
     final details = [
-      if (t.isPlanned) 'Planned' else if (t.isBooked) 'Booked',
-      if (t.isExpense || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
+      if (!t.isHotel && t.isPlanned)
+        'Planned'
+      else if (!t.isHotel && t.isBooked)
+        'Booked',
+      if (t.isSpending || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
       if (t.comment.isNotEmpty) t.comment,
     ].join(' · ');
 
@@ -312,18 +319,57 @@ class _EntryTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDelete(),
       child: Card(
-        color: t.isPlanned ? scheme.tertiaryContainer : null,
+        color: t.isHotel && t.isBooked
+            ? scheme.primaryContainer
+            : t.isPending
+                ? scheme.tertiaryContainer
+                : null,
+        shape: t.isHotel
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: scheme.secondary, width: 1.5),
+              )
+            : null,
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           onTap: onTap,
           leading: CircleAvatar(
-            backgroundColor: scheme.surfaceContainerHigh,
-            child: Icon(t.isPlanned ? Icons.schedule : transactionIcon(t.type)),
+            backgroundColor:
+                t.isHotel ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
+            child: Icon(
+              t.isHotel
+                  ? Icons.hotel
+                  : t.isPlanned
+                      ? Icons.schedule
+                      : transactionIcon(t.type),
+            ),
           ),
           title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: details.isEmpty
-              ? null
-              : Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
+          subtitle: t.isHotel
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _HotelStateBadge(state: t.transactionState),
+                        if (t.days > 0)
+                          Text(
+                            t.days == 1 ? '1 day' : '${t.days} days',
+                            style: detailStyle.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                      ],
+                    ),
+                    if (details.isNotEmpty)
+                      Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
+                  ],
+                )
+              : details.isEmpty
+                  ? null
+                  : Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -340,6 +386,62 @@ class _EntryTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A colored pill showing the booking state of a hotel: planned, booked or paid.
+class _HotelStateBadge extends StatelessWidget {
+  final TransactionState state;
+
+  const _HotelStateBadge({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (label, icon, background, foreground) = switch (state) {
+      TransactionState.planned => (
+          'PLANNED',
+          Icons.schedule,
+          scheme.surface,
+          scheme.tertiary,
+        ),
+      TransactionState.booked => (
+          'BOOKED',
+          Icons.event_available,
+          scheme.primary,
+          scheme.onPrimary,
+        ),
+      TransactionState.paid => (
+          'PAID',
+          Icons.check_circle,
+          Colors.green.shade700,
+          Colors.white,
+        ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: state == TransactionState.planned ? foreground : background),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

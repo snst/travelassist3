@@ -93,8 +93,8 @@ class Balance {
       final amount = CurrencyValue(t.amount, byCode[t.currency]);
       final code = t.currency;
 
-      // Planned expenses are future costs: they must not affect actual figures or the day range.
-      if (t.isPlanned && t.isExpense) {
+      // Pending expenses (planned, or booked hotels) are future costs: they must not affect actual figures or the day range.
+      if (t.isPending && t.isSpending) {
         balance.planned.add(code, amount, isCash: t.isCash, method: t.method.trim());
         if (t.isCash) balance.cashAfterPlanned.add(code, amount, sign: -1);
         continue;
@@ -105,6 +105,7 @@ class Balance {
 
       switch (t.type) {
         case TransactionKind.expense:
+        case TransactionKind.hotel:
           final method = t.method.trim();
           balance.expenses.add(code, amount, isCash: t.isCash, method: method);
           if (t.isCash) balance.cashOnHand.add(code, amount, sign: -1);

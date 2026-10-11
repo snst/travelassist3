@@ -12,13 +12,12 @@ List<String> paymentMethodSuggestions({
   final all = <String, int>{};
   for (final t in transactions) {
     final method = t.method.trim();
-    final usesMethod =
-        t.type == TransactionKind.expense || t.type == TransactionKind.withdrawal;
+    final usesMethod = t.isSpending || t.isWithdrawal;
     if (!usesMethod || method.isEmpty) continue;
     all[method] = (all[method] ?? 0) + 1;
     if (t.type == kind) own[method] = (own[method] ?? 0) + 1;
   }
-  if (kind == TransactionKind.expense) all.putIfAbsent(cashMethod, () => 0);
+  if (kind != TransactionKind.withdrawal) all.putIfAbsent(cashMethod, () => 0);
   // Cash is what a withdrawal produces, not a way to pay for it.
   if (kind == TransactionKind.withdrawal) all.remove(cashMethod);
 

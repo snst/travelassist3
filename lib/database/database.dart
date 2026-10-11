@@ -397,7 +397,8 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-enum TransactionKind { expense, withdrawal, cashCount, deposit }
+// The index is stored in the database: only append new kinds.
+enum TransactionKind { expense, withdrawal, cashCount, deposit, hotel }
 
 /// Lifecycle of a transaction; the index is stored in [MoneyTransactions.state].
 enum TransactionState { planned, booked, paid }
@@ -422,6 +423,13 @@ extension MoneyTransactionHelpers on MoneyTransaction {
   bool get isWithdrawal => type == TransactionKind.withdrawal;
   bool get isCashCount => type == TransactionKind.cashCount;
   bool get isDeposit => type == TransactionKind.deposit;
+  bool get isHotel => type == TransactionKind.hotel;
+
+  /// Money spent on something: an expense or a hotel booking.
+  bool get isSpending => isExpense || isHotel;
+
+  /// Still a future cost: planned, or for a hotel also booked but not yet paid.
+  bool get isPending => isPlanned || (isHotel && isBooked);
 
   bool get isCash => method.trim().isEmpty || method == cashMethod;
 

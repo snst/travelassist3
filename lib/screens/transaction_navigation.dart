@@ -4,6 +4,7 @@ import '../utils/transaction_kind.dart';
 import 'cash_count_page.dart';
 import 'deposit_page.dart';
 import 'expense_page.dart';
+import 'hotel_page.dart';
 import 'withdrawal_page.dart';
 
 /// The entry page for [kind]; edits [transaction] when given, otherwise adds a new entry.
@@ -21,6 +22,8 @@ Widget transactionPage(
       return DepositPage(database: database, transaction: transaction);
     case TransactionKind.cashCount:
       return CashCountPage(database: database, transaction: transaction);
+    case TransactionKind.hotel:
+      return HotelPage(database: database, transaction: transaction);
   }
 }
 

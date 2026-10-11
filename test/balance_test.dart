@@ -92,6 +92,23 @@ void main() {
     expect(balance.days, 1);
   });
 
+  test('Hotels: planned and booked are pending, paid counts as expense', () {
+    final balance = Balance.from(
+      currencies: [eur, usd],
+      transactions: [
+        tx(TransactionKind.hotel, 100, 'EUR',
+            method: 'Visa', state: TransactionState.planned, date: DateTime(2026, 5, 10)),
+        tx(TransactionKind.hotel, 200, 'EUR',
+            method: 'Visa', state: TransactionState.booked, date: DateTime(2026, 5, 10)),
+        tx(TransactionKind.hotel, 50, 'EUR', method: 'Visa'),
+      ],
+    );
+
+    expect(balance.planned.total.total.value, 300);
+    expect(balance.expenses.total.total.value, 50);
+    expect(balance.days, 1);
+  });
+
   test('Expense counted for several days extends the average range', () {
     final balance = Balance.from(
       currencies: [eur, usd],
