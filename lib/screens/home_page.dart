@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import '../database/database.dart';
 import 'balance_page.dart';
 import 'calculator_page.dart';
+import 'cash_count_page.dart';
 import 'currency_settings_screen.dart';
+import 'deposit_page.dart';
 import 'note_list_page.dart';
 import 'todo_list_page.dart';
 import 'transaction_list_page.dart';
+import 'withdrawal_page.dart';
 
 class _Feature {
   final String label;
@@ -18,6 +21,9 @@ class _Feature {
 final _features = <_Feature>[
   _Feature('Calculator', Icons.calculate, (db) => CalculatorPage(database: db)),
   _Feature('Entries', Icons.receipt_long, (db) => TransactionListPage(database: db)),
+  _Feature('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
+  _Feature('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
+  _Feature('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
   _Feature('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
   _Feature('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
   _Feature('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),

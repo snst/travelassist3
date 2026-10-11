@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../calculator/currency_value.dart';
 import 'currency_selector.dart';
 
 class CurrencyAmountInput extends StatelessWidget {
@@ -21,13 +22,22 @@ class CurrencyAmountInput extends StatelessWidget {
     required this.selectedCurrencyCode,
     required this.onCurrencySelected,
     required this.amountController,
-    required this.readOnly,
-    required this.autofocus,
-    required this.allowNegative,
-    required this.amountLabel,
+    this.readOnly = false,
+    this.autofocus = true,
+    this.allowNegative = false,
+    this.amountLabel = 'Amount',
     required this.onAmountChanged,
-    required this.amountValidator,
+    this.amountValidator = positiveAmountValidator,
   });
+
+  /// Requires a non-empty amount greater than 0.
+  static String? positiveAmountValidator(String? value) {
+    if ((value ?? '').trim().isEmpty) return 'Please enter an amount';
+    if (CurrencyValue.safeConvertToDouble(value!) <= 0) {
+      return 'Amount must be greater than 0';
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {

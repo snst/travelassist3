@@ -3,6 +3,9 @@ import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../widgets/currency_amount_input.dart';
+import '../utils/payment_methods.dart';
+import '../widgets/add_payment_method_dialog.dart';
+import '../widgets/cash_count_hint.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/payment_method_selector.dart';
@@ -116,69 +119,20 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
     super.dispose();
   }
 
-  void _showAddPaymentMethodDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Payment Method'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g. Credit Card, PayPal, Revolut',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (value) {
-            final trimmed = value.trim();
-            if (trimmed.isNotEmpty) {
-              setState(() {
-                _methodController.text = trimmed;
-              });
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final trimmed = controller.text.trim();
-              if (trimmed.isNotEmpty) {
-                setState(() {
-                  _methodController.text = trimmed;
-                });
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _showAddPaymentMethodDialog() async {
+    final method = await showAddPaymentMethodDialog(context);
+    if (method != null && mounted) {
+      setState(() => _methodController.text = method);
+    }
   }
 
   /// Payment methods used before for [kind], most frequent first.
-  List<String> _methodSuggestions(TransactionKind kind) {
-    final counts = <String, int>{};
-    for (final t in widget.transactions) {
-      final method = t.method.trim();
-      if (t.type == kind && method.isNotEmpty) {
-        counts[method] = (counts[method] ?? 0) + 1;
-      }
-    }
-    if (kind == TransactionKind.expense) counts.putIfAbsent(cashMethod, () => 0);
-
-    final current = _methodController.text.trim();
-    if (current.isNotEmpty && !counts.containsKey(current)) {
-      counts[current] = 999;
-    }
-
-    return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
-  }
+  List<String> _methodSuggestions(TransactionKind kind) =>
+      paymentMethodSuggestions(
+        transactions: widget.transactions,
+        kind: kind,
+        current: _methodController.text,
+      );
 
   String _defaultMethod(TransactionKind kind) {
     if (!(kind == TransactionKind.expense || kind == TransactionKind.withdrawal)) {
@@ -327,20 +281,12 @@ class _TransactionItemPageState extends State<TransactionItemPage> {
   }
 
   Widget _buildCashCountHint() {
-    final expected = _balance.cashIn(_currencyCode);
-    final counted = CurrencyValue.safeConvertToDouble(_amountController.text);
     final hasInput = _amountController.text.trim().isNotEmpty;
-    final difference = counted - expected;
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Text(
-        'Expected cash: ${expected.toStringAsFixed(2)} $_currencyCode'
-        '${hasInput ? '   Difference: ${difference >= 0 ? '+' : ''}${difference.toStringAsFixed(2)}' : ''}',
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: hasInput && difference < 0 ? theme.colorScheme.error : null,
-        ),
-      ),
+    return CashCountHint(
+      expected: _balance.cashIn(_currencyCode),
+      currencyCode: _currencyCode,
+      counted:
+          hasInput ? CurrencyValue.safeConvertToDouble(_amountController.text) : null,
     );
   }
 
