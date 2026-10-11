@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import '../database/database.dart';
+import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
 import 'note_actions.dart';
 
@@ -24,7 +23,7 @@ class NoteItemPage extends StatefulWidget {
 class _NoteItemPageState extends State<NoteItemPage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _commentController;
-  final List<TextEditingController> _linkControllers = [];
+  late final LinkListController _links;
 
   late List<String> _tags;
   List<String> _availableTags = [];
@@ -35,14 +34,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
     final note = widget.note;
     _commentController = TextEditingController(text: note?.comment ?? '');
 
-    final initialLinks = note?.linkList ?? [];
-    if (initialLinks.isNotEmpty) {
-      for (final link in initialLinks) {
-        _linkControllers.add(TextEditingController(text: link));
-      }
-    } else {
-      _linkControllers.add(TextEditingController());
-    }
+    _links = LinkListController(note?.linkList ?? []);
 
     if (note != null) {
       _tags = note.tagList;
@@ -65,9 +57,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
   @override
   void dispose() {
     _commentController.dispose();
-    for (final controller in _linkControllers) {
-      controller.dispose();
-    }
+    _links.dispose();
     super.dispose();
   }
 
@@ -86,164 +76,11 @@ class _NoteItemPageState extends State<NoteItemPage> {
     });
   }
 
-  void _addLink([String text = '']) {
-    setState(() {
-      _linkControllers.add(TextEditingController(text: text));
-    });
-  }
-
-  void _removeLink(int index) {
-    setState(() {
-      final controller = _linkControllers.removeAt(index);
-      controller.dispose();
-    });
-  }
-
-  Future<void> _confirmDeleteLink(int index) async {
-    final linkText = _linkControllers[index].text.trim();
-    if (linkText.isEmpty) {
-      _removeLink(index);
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Link'),
-        content: Text(
-          'Are you sure you want to delete this link?\n\n$linkText',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      _removeLink(index);
-    }
-  }
-
-  Future<void> _addLinkFromClipboard() async {
-    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = clipboardData?.text?.trim() ?? '';
-    if (!mounted) return;
-
-    if (text.isNotEmpty) {
-      final newLinks = text
-          .split(RegExp(r'[\t\r\n]+'))
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-
-      if (newLinks.isNotEmpty) {
-        setState(() {
-          for (final linkText in newLinks) {
-            final emptyIndex =
-                _linkControllers.indexWhere((c) => c.text.trim().isEmpty);
-            if (emptyIndex != -1) {
-              _linkControllers[emptyIndex].text = linkText;
-            } else {
-              _linkControllers.add(TextEditingController(text: linkText));
-            }
-          }
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${newLinks.length} ${newLinks.length == 1 ? 'link' : 'links'} added from clipboard!',
-            ),
-          ),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Clipboard is empty or contains no text.'),
-        ),
-      );
-    }
-  }
-
-  Future<void> _attachCurrentGpsLocation() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!mounted) return;
-    if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location services are disabled.')),
-      );
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (!mounted) return;
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (!mounted) return;
-      if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location permissions are denied.')),
-        );
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location permissions are permanently denied.')),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fetching current GPS location...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-
-    Position position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
-
-    if (!mounted) return;
-    final geoString = 'geo:${position.latitude},${position.longitude}';
-    setState(() {
-      final emptyIndex =
-          _linkControllers.indexWhere((c) => c.text.trim().isEmpty);
-      if (emptyIndex != -1) {
-        _linkControllers[emptyIndex].text = geoString;
-      } else {
-        _linkControllers.add(TextEditingController(text: geoString));
-      }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('GPS location attached!')),
-    );
-  }
-
-  String _buildJoinedLinkString() {
-    return _linkControllers
-        .map((c) => c.text.trim())
-        .where((t) => t.isNotEmpty)
-        .join('\t');
-  }
-
   void _showLargeDisplayDialog() {
     showNoteDialog(
       context,
       comment: _commentController.text.trim(),
-      link: _buildJoinedLinkString(),
+      link: _links.joined,
     );
   }
 
@@ -302,8 +139,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
                 ),
                 validator: (value) {
                   final commentText = value?.trim() ?? '';
-                  final hasLinks =
-                      _linkControllers.any((c) => c.text.trim().isNotEmpty);
+                  final hasLinks = _links.hasLinks;
                   if (commentText.isEmpty && !hasLinks) {
                     return 'Please enter a note or at least one link';
                   }
@@ -311,116 +147,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
                 },
               ),
               const SizedBox(height: 20),
-
-              // Links Section
-             /* Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Links / Locations',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  Text(
-                    '${_linkControllers.length} ${_linkControllers.length == 1 ? 'link' : 'links'}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),*/
-
-              if (_linkControllers.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'No links added yet.',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _linkControllers.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final controller = _linkControllers[index];
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: controller,
-                            decoration: InputDecoration(
-                              labelText: 'Link ${index + 1}',
-                              hintText: 'https://... or geo:lat,lng',
-                              border: const OutlineInputBorder(),
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.open_in_new),
-                          tooltip: 'Open Link',
-                          onPressed: () =>
-                              openNoteLink(context, controller.text),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.copy),
-                          tooltip: 'Copy Link',
-                          onPressed: () => copyNoteText(
-                            context,
-                            controller.text,
-                            'Link',
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
-                          ),
-                          tooltip: 'Remove Link',
-                          onPressed: () => _confirmDeleteLink(index),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              const SizedBox(height: 12),
-
-              // Link Action Buttons
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: _addLinkFromClipboard,
-                    icon: const Icon(Icons.assignment_turned_in_outlined),
-                    label: const Text('Paste'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => _addLink(),
-                    icon: const Icon(Icons.add_link),
-                    label: const Text('New'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _attachCurrentGpsLocation,
-                    icon: const Icon(Icons.my_location),
-                    label: const Text('GPS'),
-                  ),
-                ],
-              ),
+              LinkEditor(controller: _links),
               const SizedBox(height: 24),
 
               ElevatedButton.icon(
@@ -449,7 +176,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
   Future<void> _saveNote() async {
     if (_formKey.currentState!.validate()) {
       final comment = _commentController.text.trim();
-      final link = _buildJoinedLinkString();
+      final link = _links.joined;
 
       if (widget.note == null) {
         await widget.database.addNote(
