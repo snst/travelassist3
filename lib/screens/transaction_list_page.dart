@@ -299,11 +299,9 @@ class _EntryTile extends StatelessWidget {
     final isOutgoing = t.isSpending;
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign = home.currency == null || home.currencyString != t.currency;
+    final showStatusBadge = t.isPlanned || (t.isHotel && t.isBooked);
     final details = [
-      if (!t.isHotel && t.isPlanned)
-        'Planned'
-      else if (!t.isHotel && t.isBooked)
-        'Booked',
+      if (!t.isHotel && t.isBooked) 'Booked',
       if (t.isSpending || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
       if (t.comment.isNotEmpty) t.comment,
     ].join(' · ');
@@ -320,30 +318,32 @@ class _EntryTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDelete(),
       child: Card(
-        color: t.isHotel && t.isBooked
-            ? scheme.primaryContainer
-            : t.isPending
-                ? scheme.tertiaryContainer
-                : null,
-        shape: t.isHotel
-            ? RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: scheme.secondary, width: 1.5),
-              )
-            : null,
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           onTap: onTap,
-          leading: CircleAvatar(
-            backgroundColor:
-                t.isHotel ? scheme.secondaryContainer : scheme.surfaceContainerHigh,
-            child: Icon(
-              t.isHotel
-                  ? Icons.hotel
-                  : t.isPlanned
-                      ? Icons.schedule
-                      : transactionIcon(t.type),
-            ),
+          leading: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                backgroundColor: t.isHotel
+                    ? scheme.secondaryContainer
+                    : scheme.surfaceContainerHigh,
+                child: Icon(
+                  t.isHotel ? Icons.hotel : transactionIcon(t.type),
+                ),
+              ),
+              if (showStatusBadge)
+                Positioned(
+                  right: -12,
+                  bottom: -4,
+                  child: HotelStateBadge(
+                    state: t.isHotel
+                        ? t.transactionState
+                        : TransactionState.planned,
+                    compact: true,
+                  ),
+                ),
+            ],
           ),
           title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: t.isHotel
@@ -351,19 +351,11 @@ class _EntryTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 2),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        HotelStateBadge(state: t.transactionState),
-                        if (t.days > 0)
-                          Text(
-                            t.days == 1 ? '1 day' : '${t.days} days',
-                            style: detailStyle.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                      ],
-                    ),
+                    if (t.days > 0)
+                      Text(
+                        t.days == 1 ? '1 day' : '${t.days} days',
+                        style: detailStyle.copyWith(fontWeight: FontWeight.w600),
+                      ),
                     if (details.isNotEmpty)
                       Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
                   ],

@@ -16,7 +16,7 @@ class DateTimePickerTile extends StatelessWidget {
     final date = await showDatePicker(
       context: context,
       initialDate: value,
-      firstDate: DateTime(2026),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2100),
     );
     if (date == null || !context.mounted) return;

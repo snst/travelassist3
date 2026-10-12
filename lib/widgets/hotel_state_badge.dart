@@ -4,8 +4,9 @@ import '../database/database.dart';
 /// A colored pill showing the booking state of a hotel: planned, booked or paid.
 class HotelStateBadge extends StatelessWidget {
   final TransactionState state;
+  final bool compact;
 
-  const HotelStateBadge({super.key, required this.state});
+  const HotelStateBadge({super.key, required this.state, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,10 @@ class HotelStateBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 5 : 8,
+        vertical: compact ? 1 : 2,
+      ),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),
@@ -41,13 +45,15 @@ class HotelStateBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
+          if (!compact) ...[
+            Icon(icon, size: 14, color: foreground),
+            const SizedBox(width: 4),
+          ],
           Text(
             label,
             style: TextStyle(
               color: foreground,
-              fontSize: 11,
+              fontSize: compact ? 9 : 11,
               fontWeight: FontWeight.bold,
             ),
           ),
