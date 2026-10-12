@@ -19,7 +19,9 @@ class _Booking {
 
   _Booking(this.transaction, this.start, this.length);
 
-  int get endDay => startDay + length;
+  int get nights => transaction.days < 1 ? 1 : transaction.days;
+
+  int get endDay => startDay + nights;
 
   String get title {
     final t = transaction;
@@ -91,7 +93,7 @@ class _CalendarView extends StatelessWidget {
     // A booking of 0 days is not counted in the average but still occupies its day.
     final bookings = [
       for (final t in hotels)
-        _Booking(t, _dayOf(t.date), t.days < 1 ? 1 : t.days),
+        _Booking(t, _dayOf(t.date), (t.days < 1 ? 1 : t.days) + 1),
     ]..sort((a, b) {
         final byStart = a.start.compareTo(b.start);
         return byStart != 0 ? byStart : b.length.compareTo(a.length);
@@ -118,17 +120,50 @@ class _CalendarView extends StatelessWidget {
       b.lane = lane;
     }
 
-    // Days booked more than once, and the bookings involved.
-    final occupancy = List<int>.filled(totalDays, 0);
+    // Days booked and time-slot overlap detection (checking in vs checking out on turnover days).
+    final topHalfBookings = List.generate(totalDays, (_) => <_Booking>[]);
+    final bottomHalfBookings = List.generate(totalDays, (_) => <_Booking>[]);
+    final fullDayBookings = List.generate(totalDays, (_) => <_Booking>[]);
+
     for (final b in bookings) {
-      for (var d = b.startDay; d < b.endDay; d++) {
-        occupancy[d]++;
+      final start = b.startDay;
+      final end = b.endDay;
+      if (start == end) {
+        bottomHalfBookings[start].add(b);
+      } else {
+        bottomHalfBookings[start].add(b);
+        for (var d = start + 1; d < end; d++) {
+          fullDayBookings[d].add(b);
+        }
+        topHalfBookings[end].add(b);
       }
     }
-    for (final b in bookings) {
-      b.overlaps = occupancy.getRange(b.startDay, b.endDay).any((c) => c > 1);
+
+    final overlappingBookings = <_Booking>{};
+    final dayHasOverlap = List<bool>.filled(totalDays, false);
+
+    for (var d = 0; d < totalDays; d++) {
+      final full = fullDayBookings[d];
+      final top = topHalfBookings[d];
+      final bottom = bottomHalfBookings[d];
+
+      final hasOverlap = full.length > 1 ||
+          (full.isNotEmpty && (top.isNotEmpty || bottom.isNotEmpty)) ||
+          top.length > 1 ||
+          bottom.length > 1;
+
+      dayHasOverlap[d] = hasOverlap;
+      if (hasOverlap) {
+        full.forEach(overlappingBookings.add);
+        top.forEach(overlappingBookings.add);
+        bottom.forEach(overlappingBookings.add);
+      }
     }
-    final overlapping = bookings.where((b) => b.overlaps).length;
+
+    for (final b in bookings) {
+      b.overlaps = overlappingBookings.contains(b);
+    }
+    final overlapping = overlappingBookings.length;
 
     final scheme = Theme.of(context).colorScheme;
     final today = _dayOf(DateTime.now());
@@ -175,15 +210,19 @@ class _CalendarView extends StatelessWidget {
                           child: _DayRow(
                             day: first.add(Duration(days: d)),
                             isToday: first.add(Duration(days: d)) == today,
-                            overlapping: occupancy[d] > 1,
+                            overlapping: dayHasOverlap[d],
                           ),
                         ),
                       for (final b in bookings)
                         Positioned(
-                          top: b.startDay * _rowHeight + 2,
+                          top: b.length >= 2
+                              ? b.startDay * _rowHeight + (_rowHeight / 2) + 2
+                              : b.startDay * _rowHeight + (_rowHeight / 4) + 2,
                           left: _dateColumnWidth + b.lane * laneWidth,
                           width: laneWidth - 4,
-                          height: b.length * _rowHeight - 4,
+                          height: b.length >= 2
+                              ? (b.length - 1) * _rowHeight - 4
+                              : (_rowHeight / 2) - 4,
                           child: _BookingBar(
                             booking: b,
                             onTap: () => openTransaction(
@@ -285,16 +324,17 @@ class _BookingBar extends StatelessWidget {
       TransactionState.booked => scheme.primaryContainer,
       TransactionState.paid => Colors.green.shade100,
     };
-    final end = booking.start.add(Duration(days: booking.length - 1));
-    final range = booking.length == 1
-        ? '${booking.start.day}.${booking.start.month}.'
-        : '${booking.start.day}.${booking.start.month}. – ${end.day}.${end.month}.';
-    final days = booking.length == 1 ? '1 day' : '${booking.length} days';
+    final checkIn = booking.start;
+    final nights = (booking.length - 1).clamp(1, 9999);
+    final checkOut = booking.start.add(Duration(days: nights));
+    final checkInStr = '${checkIn.day}.${checkIn.month}.';
+    final checkOutStr = '${checkOut.day}.${checkOut.month}.';
+    final nightsStr = nights == 1 ? '1 night' : '$nights nights';
 
     return Material(
       color: background,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(
           color: booking.overlaps ? scheme.error : scheme.outline,
           width: booking.overlaps ? 3 : 1,
@@ -304,16 +344,17 @@ class _BookingBar extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: SingleChildScrollView(
             physics: const NeverScrollableScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   children: [
                     if (booking.overlaps) ...[
-                      Icon(Icons.warning_amber, size: 16, color: scheme.error),
+                      Icon(Icons.warning_amber, size: 14, color: scheme.error),
                       const SizedBox(width: 2),
                     ],
                     Expanded(
@@ -321,19 +362,29 @@ class _BookingBar extends StatelessWidget {
                         booking.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    HotelStateBadge(state: state),
                   ],
                 ),
-                const SizedBox(height: 2),
-                HotelStateBadge(state: state),
-                const SizedBox(height: 2),
-                Text(
-                  '$range · $days',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: scheme.outline, fontSize: 12),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.login, size: 10, color: scheme.outline),
+                    const SizedBox(width: 2),
+                    Text(checkInStr, style: TextStyle(color: scheme.outline, fontSize: 11)),
+                    Text(' → ', style: TextStyle(fontSize: 11, color: scheme.outline)),
+                    Icon(Icons.logout, size: 10, color: scheme.outline),
+                    const SizedBox(width: 2),
+                    Text(checkOutStr, style: TextStyle(color: scheme.outline, fontSize: 11)),
+                    const Spacer(),
+                    Text(
+                      nightsStr,
+                      style: TextStyle(color: scheme.outline, fontSize: 11),
+                    ),
+                  ],
                 ),
               ],
             ),
