@@ -16,24 +16,18 @@ class DateTimePickerTile extends StatelessWidget {
     final date = await showDatePicker(
       context: context,
       initialDate: value,
-      firstDate: DateTime(2000),
+      firstDate: DateTime(2026),
       lastDate: DateTime(2100),
     );
     if (date == null || !context.mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(value),
-    );
-    if (!context.mounted) return;
 
     onChanged(
       DateTime(
         date.year,
         date.month,
         date.day,
-        time?.hour ?? value.hour,
-        time?.minute ?? value.minute,
+        12,
+        0,
       ),
     );
   }
@@ -43,7 +37,7 @@ class DateTimePickerTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.event),
-      title: Text(formatDateTime(value)),
+      title: Text(formatDay(value)),
       trailing: const Icon(Icons.edit_calendar),
       onTap: () => _pickDateTime(context),
     );

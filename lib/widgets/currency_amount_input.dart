@@ -33,8 +33,8 @@ class CurrencyAmountInput extends StatelessWidget {
   /// Requires a non-empty amount greater than 0.
   static String? positiveAmountValidator(String? value) {
     if ((value ?? '').trim().isEmpty) return 'Please enter an amount';
-    if (CurrencyValue.safeConvertToDouble(value!) <= 0) {
-      return 'Amount must be greater than 0';
+    if (CurrencyValue.safeConvertToDouble(value!) < 0) {
+      return 'Amount must be >= 0';
     }
     return null;
   }
