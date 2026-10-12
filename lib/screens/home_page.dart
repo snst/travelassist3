@@ -69,20 +69,27 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: scheme.surface,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final group in _groups)
-                _GroupSection(group: group, database: database),
-            ],
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1040),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final group in _groups)
+                    _GroupSection(group: group, database: database),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -98,42 +105,52 @@ class _GroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
-            child: Text(
-              group.title.toUpperCase(),
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-            ),
-          ),
-          Row(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth < 520
+              ? 2
+              : constraints.maxWidth < 820
+                  ? 3
+                  : 4;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < _columns; i++)
-                Expanded(
-                  child: i < group.features.length
-                      ? _FeatureCard(
-                          feature: group.features[i],
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  group.features[i].builder(database),
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+              Padding(
+                padding: const EdgeInsets.only(left: 2, bottom: 6),
+                child: Text(
+                  group.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
+              ),
+              GridView.builder(
+                itemCount: group.features.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  mainAxisExtent: 54,
+                ),
+                itemBuilder: (context, index) {
+                  final feature = group.features[index];
+                  return _FeatureCard(
+                    feature: feature,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => feature.builder(database),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -154,48 +171,34 @@ class _FeatureCard extends StatelessWidget {
     final foreground =
         isAdd ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
     return Card(
-      margin: const EdgeInsets.all(3),
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
       elevation: 0,
       color: background,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
-        child: SizedBox(
-          height: 76,
-          child: Stack(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
             children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(feature.icon, size: 28, color: foreground),
-                    const SizedBox(height: 6),
-                    Text(
-                      feature.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelMedium
-                          ?.copyWith(color: foreground),
-                    ),
-                  ],
+              Icon(feature.icon, color: foreground, size: 20),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  feature.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: foreground,
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
               ),
               if (isAdd)
-                Positioned(
-                  top: 5,
-                  right: 5,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.add, size: 12, color: scheme.onPrimary),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Icon(Icons.add, color: foreground, size: 18),
                 ),
             ],
           ),
