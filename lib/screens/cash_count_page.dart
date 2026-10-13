@@ -11,7 +11,7 @@ import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
-class CashCountPage extends StatelessWidget {
+class CashCountPage extends StatefulWidget {
   final AppDatabase database;
 
   /// An existing count to edit; null to add a new one.
@@ -20,19 +20,32 @@ class CashCountPage extends StatelessWidget {
   const CashCountPage({super.key, required this.database, this.transaction});
 
   @override
+  State<CashCountPage> createState() => _CashCountPageState();
+}
+
+class _CashCountPageState extends State<CashCountPage> {
+  final _formKey = GlobalKey<_CashCountFormState>();
+
+  @override
   Widget build(BuildContext context) {
-    final existing = transaction;
+    final existing = widget.transaction;
     return TransactionDataScaffold(
-      database: database,
+      database: widget.database,
       title: existing == null
           ? 'Count Cash'
           : 'Edit ${transactionLabel(TransactionKind.cashCount)}',
       actions: [
+        IconButton(
+          tooltip: existing == null ? 'Save Count' : 'Update Count',
+          onPressed: () => _formKey.currentState?._save(),
+          icon: const Icon(Icons.save),
+        ),
         if (existing != null)
-          DeleteEntryButton(database: database, transaction: existing),
+          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _CashCountForm(
-        database: database,
+        key: _formKey,
+        database: widget.database,
         currencies: currencies,
         transactions: transactions,
         existing: existing,
@@ -50,6 +63,7 @@ class _CashCountForm extends StatefulWidget {
   final MoneyTransaction? existing;
 
   const _CashCountForm({
+    super.key,
     required this.database,
     required this.currencies,
     required this.transactions,

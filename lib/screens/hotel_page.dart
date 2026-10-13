@@ -15,7 +15,7 @@ import '../widgets/payment_method_selector.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
-class HotelPage extends StatelessWidget {
+class HotelPage extends StatefulWidget {
   final AppDatabase database;
 
   /// An existing hotel booking to edit; null to add a new one.
@@ -24,19 +24,32 @@ class HotelPage extends StatelessWidget {
   const HotelPage({super.key, required this.database, this.transaction});
 
   @override
+  State<HotelPage> createState() => _HotelPageState();
+}
+
+class _HotelPageState extends State<HotelPage> {
+  final _formKey = GlobalKey<_HotelFormState>();
+
+  @override
   Widget build(BuildContext context) {
-    final existing = transaction;
+    final existing = widget.transaction;
     return TransactionDataScaffold(
-      database: database,
+      database: widget.database,
       title: existing == null
           ? 'Add Hotel'
           : 'Edit ${transactionLabel(TransactionKind.hotel)}',
       actions: [
+        IconButton(
+          tooltip: existing == null ? 'Save Hotel' : 'Update Hotel',
+          onPressed: () => _formKey.currentState?._save(),
+          icon: const Icon(Icons.save),
+        ),
         if (existing != null)
-          DeleteEntryButton(database: database, transaction: existing),
+          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _HotelForm(
-        database: database,
+        key: _formKey,
+        database: widget.database,
         currencies: currencies,
         transactions: transactions,
         existing: existing,
@@ -54,6 +67,7 @@ class _HotelForm extends StatefulWidget {
   final MoneyTransaction? existing;
 
   const _HotelForm({
+    super.key,
     required this.database,
     required this.currencies,
     required this.transactions,
