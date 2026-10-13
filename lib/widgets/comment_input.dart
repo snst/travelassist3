@@ -4,11 +4,19 @@ import 'package:flutter/services.dart';
 class CommentInput extends StatelessWidget {
   final TextEditingController controller;
   final int maxLines;
+  final bool autofocus;
+  final String labelText;
+  final String? hintText;
+  final String? Function(String?)? validator;
 
   const CommentInput({
     super.key,
     required this.controller,
     this.maxLines = 2,
+    this.autofocus = false,
+    this.labelText = 'Info',
+    this.hintText,
+    this.validator,
   });
 
   @override
@@ -24,8 +32,11 @@ class CommentInput extends StatelessWidget {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      autofocus: autofocus,
+      validator: validator,
       decoration: InputDecoration(
-        labelText: 'Info',
+        labelText: labelText,
+        hintText: hintText,
         border: const OutlineInputBorder(),
         alignLabelWithHint: true,
         suffixIcon: Row(

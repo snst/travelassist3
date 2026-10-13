@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../widgets/comment_input.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
 import 'note_actions.dart';
@@ -127,16 +128,10 @@ class _NoteItemPageState extends State<NoteItemPage> {
               const SizedBox(height: 20),
 
               // Comment Section
-              TextFormField(
+              CommentInput(
                 controller: _commentController,
                 maxLines: 4,
                 autofocus: isNew,
-                decoration: const InputDecoration(
-                  labelText: 'Note / Comment',
-                  hintText: 'Enter hotel address, flight details, or travel note...',
-                  border: OutlineInputBorder(),
-                  alignLabelWithHint: true,
-                ),
                 validator: (value) {
                   final commentText = value?.trim() ?? '';
                   final hasLinks = _links.hasLinks;
