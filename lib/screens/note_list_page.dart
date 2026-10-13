@@ -69,16 +69,6 @@ class _NoteListPageState extends State<NoteListPage> {
     }
   }
 
-  IconData _getNoteIcon(Note note) {
-    if (note.isGeo || note.tagList.contains('map')) {
-      return Icons.map_outlined;
-    } else if (note.isLink || note.isFile) {
-      return Icons.link;
-    } else {
-      return Icons.note_alt_outlined;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,12 +163,6 @@ class _NoteListPageState extends State<NoteListPage> {
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             child: ListTile(
                               onTap: () => _openNotePage(note),
-                              leading: CircleAvatar(
-                                backgroundColor: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHigh,
-                                child: Icon(_getNoteIcon(note)),
-                              ),
                               title: Text(
                                 note.comment.isNotEmpty
                                     ? note.comment
