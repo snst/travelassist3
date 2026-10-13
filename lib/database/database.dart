@@ -181,18 +181,6 @@ class AppDatabase extends _$AppDatabase {
         rate: 1.08,
         isHome: false,
       );
-      await addCurrency(
-        name: 'British Pound',
-        shortName: 'GBP',
-        rate: 0.83,
-        isHome: false,
-      );
-      await addCurrency(
-        name: 'Japanese Yen',
-        shortName: 'JPY',
-        rate: 160.50,
-        isHome: false,
-      );
     }
   }
 
@@ -264,20 +252,6 @@ class AppDatabase extends _$AppDatabase {
         .write(TodoItemsCompanion(state: Value(state)));
   }
 
-  Future<void> seedInitialTodoItemsIfEmpty() async {
-    final count = await select(todoItems).get();
-    if (count.isEmpty) {
-      await addTodoItem(name: 'Passport', category: 'Documents', quantity: 1);
-      await addTodoItem(name: 'Boarding Pass / Tickets', category: 'Documents', quantity: 1);
-      await addTodoItem(name: 'Phone Charger', category: 'Electronics', quantity: 1);
-      await addTodoItem(name: 'Power Bank', category: 'Electronics', quantity: 1);
-      await addTodoItem(name: 'Toothbrush & Paste', category: 'Toiletries', quantity: 1);
-      await addTodoItem(name: 'Sunscreen', category: 'Toiletries', quantity: 1);
-      await addTodoItem(name: 'T-Shirts', category: 'Clothing', quantity: 5);
-      await addTodoItem(name: 'Jacket', category: 'Clothing', quantity: 1);
-    }
-  }
-
   // --- Note Operations ---
   Stream<List<Note>> watchAllNotes() {
     return (select(notes)
@@ -323,27 +297,6 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> restoreNote(Note note) {
     return into(notes).insert(note);
-  }
-
-  Future<void> seedInitialNotesIfEmpty() async {
-    final count = await select(notes).get();
-    if (count.isEmpty) {
-      await addNote(
-        comment: 'Grand Hotel Address & Reservation',
-        link: 'https://maps.google.com/?q=Grand+Hotel',
-        tags: ['hotel', 'map', 'important'],
-      );
-      await addNote(
-        comment: 'Flight Booking Reference: #AZ829',
-        link: 'https://airline.com/booking/AZ829',
-        tags: ['flight', 'tickets'],
-      );
-      await addNote(
-        comment: 'Emergency Embassy Contact: +39 06 46741',
-        link: '',
-        tags: ['embassy', 'contact', 'important'],
-      );
-    }
   }
 
   // --- Money Transaction Operations ---

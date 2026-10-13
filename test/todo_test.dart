@@ -23,15 +23,10 @@ void main() {
     await database.close();
   });
 
-  test('Seed todo items and retrieve categories', () async {
-    await database.seedInitialTodoItemsIfEmpty();
-
+  test('Checklist starts empty with the default category available', () async {
     final categories = await database.getAllCategories();
-    expect(categories, containsAll(['Documents', 'Electronics', 'Toiletries', 'Clothing']));
-
-    final openItems = await database.watchTodoItemsByState(0).first;
-    expect(openItems.length, 8);
-    expect(openItems.any((i) => i.name == 'Passport'), isTrue);
+    expect(categories, ['General']);
+    expect(await database.watchAllTodoItems().first, isEmpty);
   });
 
   test('Add, update state, and delete todo item', () async {
@@ -60,8 +55,6 @@ void main() {
   });
 
   testWidgets('Renders TodoListPage and toggles filter', (WidgetTester tester) async {
-    await database.seedInitialTodoItemsIfEmpty();
-
     await tester.pumpWidget(
       MaterialApp(
         home: TodoListPage(database: database),
@@ -70,7 +63,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Travel Checklist'), findsOneWidget);
-    expect(find.text('Passport'), findsOneWidget);
+    expect(find.text('No open items in checklist!'), findsOneWidget);
+    expect(find.text('Passport'), findsNothing);
     expect(find.textContaining('Packing Progress'), findsNothing);
     expect(find.byType(Checkbox), findsNothing);
 

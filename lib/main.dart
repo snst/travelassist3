@@ -28,8 +28,6 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _database = AppDatabase();
     _database.seedInitialCurrenciesIfEmpty();
-    _database.seedInitialTodoItemsIfEmpty();
-    _database.seedInitialNotesIfEmpty();
     unawaited(_loadDarkModePreference());
   }
 
