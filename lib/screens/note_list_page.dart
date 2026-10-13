@@ -74,6 +74,11 @@ class _NoteListPageState extends State<NoteListPage> {
               tooltip: 'Clear Filters',
               onPressed: _clearFilters,
             ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Add Note',
+            onPressed: () => _openNotePage(null),
+          ),
         ],
       ),
       body: StreamBuilder<List<Note>>(
@@ -117,12 +122,6 @@ class _NoteListPageState extends State<NoteListPage> {
                                   : 'No notes matching selected tags.',
                               style: const TextStyle(fontSize: 16),
                             ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () => _openNotePage(null),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Note'),
-                            ),
                           ],
                         ),
                       )
@@ -131,7 +130,7 @@ class _NoteListPageState extends State<NoteListPage> {
                           12,
                           8,
                           12,
-                          88 + MediaQuery.of(context).padding.bottom,
+                          8 + MediaQuery.of(context).padding.bottom,
                         ),
                         itemCount: filteredNotes.length,
                         itemBuilder: (context, index) {
@@ -247,15 +246,6 @@ class _NoteListPageState extends State<NoteListPage> {
             ],
           );
         },
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 100),
-        child: FloatingActionButton(
-          heroTag: 'notes_fab',
-          onPressed: () => _openNotePage(null),
-          tooltip: 'Add Note',
-          child: const Icon(Icons.add),
-        ),
       ),
     );
   }

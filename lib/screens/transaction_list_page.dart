@@ -31,6 +31,12 @@ class TransactionListPage extends StatelessWidget {
                 title: const Text('Entries'),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
                 actions: [
+                  if (!loading && currencies.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      tooltip: 'Add Entry',
+                      onPressed: () => showNewEntryPicker(context, database),
+                    ),
                   IconButton(
                     icon: const Icon(Icons.pie_chart),
                     tooltip: 'View Balance',
@@ -61,17 +67,6 @@ class TransactionListPage extends StatelessWidget {
                           currencies: currencies,
                           transactions: transactions,
                         ),
-              floatingActionButton: loading || currencies.isEmpty
-                  ? null
-                  : Padding(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      child: FloatingActionButton(
-                        heroTag: 'expenses_fab',
-                        tooltip: 'Add Entry',
-                        onPressed: () => showNewEntryPicker(context, database),
-                        child: const Icon(Icons.add),
-                      ),
-                    ),
             );
           },
         );

@@ -20,6 +20,13 @@ class _TodoListPageState extends State<TodoListPage> {
       appBar: AppBar(
         title: const Text('Travel Checklist'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            tooltip: 'Add Item',
+            onPressed: () => _openItemPage(null),
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: StreamBuilder<List<TodoItem>>(
         stream: widget.database.watchAllTodoItems(),
@@ -232,12 +239,6 @@ class _TodoListPageState extends State<TodoListPage> {
             label: 'Done',
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'todo_fab',
-        onPressed: () => _openItemPage(null),
-        tooltip: 'Add Item',
-        child: const Icon(Icons.add),
       ),
     );
   }

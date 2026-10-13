@@ -16,6 +16,14 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Currency Settings'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            tooltip: 'Add Currency',
+            onPressed: () => _showAddCurrencyDialog(context),
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: StreamBuilder<List<Currency>>(
         stream: widget.database.watchAllCurrencies(),
@@ -38,12 +46,6 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
                   const Icon(Icons.currency_exchange, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text('No currencies found.', style: TextStyle(fontSize: 18)),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddCurrencyDialog(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Currency'),
-                  ),
                 ],
               ),
             );
@@ -172,12 +174,6 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'currencies_fab',
-        onPressed: () => _showAddCurrencyDialog(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Currency'),
       ),
     );
   }

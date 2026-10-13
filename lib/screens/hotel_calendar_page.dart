@@ -45,6 +45,15 @@ class HotelCalendarPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Hotel Calendar'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            tooltip: 'Add Hotel',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => HotelPage(database: database)),
+            ),
+            icon: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: StreamBuilder<List<MoneyTransaction>>(
         stream: database.watchAllTransactions(),
@@ -67,14 +76,6 @@ class HotelCalendarPage extends StatelessWidget {
           }
           return _CalendarView(database: database, hotels: hotels);
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'hotel_calendar_fab',
-        tooltip: 'Add Hotel',
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => HotelPage(database: database)),
-        ),
-        child: const Icon(Icons.add),
       ),
     );
   }
