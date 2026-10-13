@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../widgets/comment_input.dart';
 
 class TodoItemPage extends StatefulWidget {
   final AppDatabase database;
@@ -89,8 +90,7 @@ class _TodoItemPageState extends State<TodoItemPage> {
                 controller: _nameController,
                 autofocus: isNew,
                 decoration: const InputDecoration(
-                  labelText: 'Item Name',
-                  hintText: 'e.g. Passport, Phone Charger',
+                  labelText: 'Item',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -192,14 +192,9 @@ class _TodoItemPageState extends State<TodoItemPage> {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              CommentInput(
                 controller: _commentController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Comment / Notes (optional)',
-                  hintText: 'Add extra details...',
-                  border: OutlineInputBorder(),
-                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
