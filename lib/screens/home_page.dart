@@ -16,6 +16,8 @@ import 'withdrawal_page.dart';
 
 enum _FeatureKind { add, view }
 
+const _settingsMenuItem = 'settings';
+
 class _Feature {
   final String label;
   final IconData icon;
@@ -66,8 +68,43 @@ final _groups = <_FeatureGroup>[
 class HomePage extends StatelessWidget {
   final String title;
   final AppDatabase database;
+  final bool darkModeEnabled;
+  final Future<void> Function(bool enabled)? onDarkModeChanged;
 
-  const HomePage({super.key, required this.title, required this.database});
+  const HomePage({
+    super.key,
+    required this.title,
+    required this.database,
+    this.darkModeEnabled = false,
+    this.onDarkModeChanged,
+  });
+
+  Future<void> _showSettings(BuildContext context) async {
+    var selectedDarkMode = darkModeEnabled;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Settings'),
+          content: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Dark mode'),
+            value: selectedDarkMode,
+            onChanged: (enabled) async {
+              await onDarkModeChanged?.call(enabled);
+              setDialogState(() => selectedDarkMode = enabled);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,15 +138,21 @@ class HomePage extends StatelessWidget {
         backgroundColor: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         actions: [
-          PopupMenuButton<_Feature>(
+          PopupMenuButton<Object>(
             tooltip: 'Cash tools',
             icon: const Icon(Icons.more_vert),
-            onSelected: (feature) => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => feature.builder(database)),
-            ),
+            onSelected: (item) {
+              if (item is _Feature) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => item.builder(database)),
+                );
+              } else if (item == _settingsMenuItem) {
+                _showSettings(context);
+              }
+            },
             itemBuilder: (context) => [
               for (final feature in _cashTools)
-                PopupMenuItem<_Feature>(
+                PopupMenuItem<Object>(
                   value: feature,
                   child: Row(
                     children: [
@@ -119,6 +162,17 @@ class HomePage extends StatelessWidget {
                     ],
                   ),
                 ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<Object>(
+                value: _settingsMenuItem,
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -139,7 +193,7 @@ class HomePage extends StatelessWidget {
                     child: _FeatureCard(
                       feature: _calculator,
                       accent: scheme.secondary,
-                      prominent: true,
+                      //prominent: true,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => _calculator.builder(database),

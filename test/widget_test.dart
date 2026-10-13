@@ -136,4 +136,34 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await database.close();
   });
+
+  testWidgets('Home settings menu lets users select dark mode',
+      (WidgetTester tester) async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    var darkModeEnabled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(
+          title: 'Travel Assist',
+          database: database,
+          onDarkModeChanged: (enabled) async {
+            darkModeEnabled = enabled;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Cash tools'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dark mode'), findsOneWidget);
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+
+    expect(darkModeEnabled, isTrue);
+  });
 }
