@@ -124,14 +124,20 @@ class LinkEditor extends StatelessWidget {
     );
   }
 
-  Future<void> _attachCurrentGpsLocation(BuildContext context) async {
+  static Future<void> attachCurrentGpsLocation(
+    BuildContext context,
+    LinkListController controller,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
-    void say(String message, {Duration? duration}) => messenger.showSnackBar(
-          SnackBar(
-            content: Text(message),
-            duration: duration ?? const Duration(seconds: 4),
-          ),
-        );
+    void say(String message, {Duration? duration}) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: duration ?? const Duration(seconds: 4),
+        ),
+      );
+    }
 
     if (!await Geolocator.isLocationServiceEnabled()) {
       say('Location services are disabled.');
@@ -151,13 +157,12 @@ class LinkEditor extends StatelessWidget {
       return;
     }
 
-    say('Fetching current GPS location...', duration: const Duration(seconds: 1));
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
+    if (!context.mounted) return;
     controller.addAll(['geo:${position.latitude},${position.longitude}']);
-    say('GPS location attached!');
   }
 
   @override
@@ -246,7 +251,8 @@ class LinkEditor extends StatelessWidget {
                   label: const Text('New'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => _attachCurrentGpsLocation(context),
+                  onPressed: () =>
+                      attachCurrentGpsLocation(context, controller),
                   icon: const Icon(Icons.my_location),
                   label: const Text('GPS'),
                 ),

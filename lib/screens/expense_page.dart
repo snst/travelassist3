@@ -15,7 +15,7 @@ import '../widgets/payment_method_selector.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
-class ExpensePage extends StatelessWidget {
+class ExpensePage extends StatefulWidget {
   final AppDatabase database;
 
   /// An existing expense to edit; null to add a new one.
@@ -24,19 +24,32 @@ class ExpensePage extends StatelessWidget {
   const ExpensePage({super.key, required this.database, this.transaction});
 
   @override
+  State<ExpensePage> createState() => _ExpensePageState();
+}
+
+class _ExpensePageState extends State<ExpensePage> {
+  final _formKey = GlobalKey<_ExpenseFormState>();
+
+  @override
   Widget build(BuildContext context) {
-    final existing = transaction;
+    final existing = widget.transaction;
     return TransactionDataScaffold(
-      database: database,
+      database: widget.database,
       title: existing == null
           ? 'Add Expense'
           : 'Edit ${transactionLabel(TransactionKind.expense)}',
       actions: [
+        IconButton(
+          tooltip: existing == null ? 'Save Expense' : 'Update Expense',
+          onPressed: () => _formKey.currentState?._save(),
+          icon: const Icon(Icons.save),
+        ),
         if (existing != null)
-          DeleteEntryButton(database: database, transaction: existing),
+          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _ExpenseForm(
-        database: database,
+        key: _formKey,
+        database: widget.database,
         currencies: currencies,
         transactions: transactions,
         existing: existing,
@@ -54,6 +67,7 @@ class _ExpenseForm extends StatefulWidget {
   final MoneyTransaction? existing;
 
   const _ExpenseForm({
+    super.key,
     required this.database,
     required this.currencies,
     required this.transactions,
@@ -76,6 +90,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   late DateTime _date;
   late int _averageDays;
   late TransactionState _state;
+  Future<void>? _gpsLocationCapture;
+  bool _gpsLocationCaptureStarted = false;
 
   List<String> get _methods => paymentMethodSuggestions(
         transactions: widget.transactions,
@@ -100,6 +116,16 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _averageDays = t?.days ?? 1;
     _state = t?.transactionState ?? TransactionState.paid;
     if (t == null) _methodController.text = _methods.first;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.existing == null && !_gpsLocationCaptureStarted) {
+      _gpsLocationCaptureStarted = true;
+      _gpsLocationCapture =
+          LinkEditor.attachCurrentGpsLocation(context, _links);
+    }
   }
 
   @override
@@ -137,6 +163,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final comment = _commentController.text.trim();
     final existing = widget.existing;
     if (existing == null) {
+      await _gpsLocationCapture;
+      if (!mounted) return;
       await widget.database.addTransaction(
         kind: TransactionKind.expense,
         amount: amount,

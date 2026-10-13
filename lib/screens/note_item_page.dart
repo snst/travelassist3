@@ -3,7 +3,6 @@ import '../database/database.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
-import 'note_actions.dart';
 
 class NoteItemPage extends StatefulWidget {
   final AppDatabase database;
@@ -77,14 +76,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
     });
   }
 
-  void _showLargeDisplayDialog() {
-    showNoteDialog(
-      context,
-      comment: _commentController.text.trim(),
-      link: _links.joined,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isNew = widget.note == null;
@@ -94,11 +85,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
         title: Text(isNew ? 'Add Note' : 'Edit Note'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.fullscreen),
-            tooltip: 'Large Display View',
-            onPressed: _showLargeDisplayDialog,
-          ),
           if (!isNew)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
