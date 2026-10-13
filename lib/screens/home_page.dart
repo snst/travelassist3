@@ -86,14 +86,28 @@ class HomePage extends StatelessWidget {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text('Settings'),
-          content: SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Dark mode'),
-            value: selectedDarkMode,
-            onChanged: (enabled) async {
-              await onDarkModeChanged?.call(enabled);
-              setDialogState(() => selectedDarkMode = enabled);
-            },
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Dark mode'),
+                value: selectedDarkMode,
+                onChanged: (enabled) async {
+                  await onDarkModeChanged?.call(enabled);
+                  setDialogState(() => selectedDarkMode = enabled);
+                },
+              ),
+              const Divider(),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: () => _showDatabaseContent(context),
+                  icon: const Icon(Icons.storage_outlined),
+                  label: const Text('Manage database content'),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -103,6 +117,76 @@ class HomePage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showDatabaseContent(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Manage database content'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final content in DatabaseContent.values)
+                _DatabaseContentRow(
+                  content: content,
+                  onDelete: () => _confirmDeleteContent(dialogContext, content),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteContent(
+    BuildContext context,
+    DatabaseContent content,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (confirmationContext) => AlertDialog(
+        title: Text('Delete ${content.label}?'),
+        content: Text(
+          'Are you sure you want to delete all ${content.label.toLowerCase()} '
+          'from the database? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(confirmationContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(confirmationContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await database.clearContent(content);
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Could not delete ${content.label.toLowerCase()}: $error'),
+        ),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('${content.label} deleted')),
     );
   }
 
@@ -215,6 +299,40 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _DatabaseContentRow extends StatelessWidget {
+  final DatabaseContent content;
+  final VoidCallback onDelete;
+
+  const _DatabaseContentRow({
+    required this.content,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(content.label)),
+        IconButton(
+          tooltip: 'Delete ${content.label}',
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete_outline),
+        ),
+        IconButton(
+          tooltip: 'Import ${content.label} (coming soon)',
+          onPressed: null,
+          icon: const Icon(Icons.file_upload_outlined),
+        ),
+        IconButton(
+          tooltip: 'Export ${content.label} (coming soon)',
+          onPressed: null,
+          icon: const Icon(Icons.file_download_outlined),
+        ),
+      ],
     );
   }
 }

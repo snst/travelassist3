@@ -392,9 +392,35 @@ class AppDatabase extends _$AppDatabase {
     return (delete(moneyTransactions)..where((t) => t.id.equals(id))).go();
   }
 
+  Future<void> clearContent(DatabaseContent content) async {
+    await transaction(() async {
+      switch (content) {
+        case DatabaseContent.currencies:
+          await delete(currencies).go();
+        case DatabaseContent.checklist:
+          await delete(todoItems).go();
+        case DatabaseContent.notes:
+          await delete(notes).go();
+        case DatabaseContent.transactions:
+          await delete(moneyTransactions).go();
+      }
+    });
+  }
+
   Future<int> restoreTransaction(MoneyTransaction transaction) {
     return into(moneyTransactions).insert(transaction);
   }
+}
+
+enum DatabaseContent {
+  currencies('Currencies'),
+  checklist('Checklist'),
+  notes('Notes'),
+  transactions('Transactions');
+
+  const DatabaseContent(this.label);
+
+  final String label;
 }
 
 // The index is stored in the database: only append new kinds.
