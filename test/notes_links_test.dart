@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/open.dart';
 import 'package:travelassist3/database/database.dart';
 import 'package:travelassist3/screens/note_item_page.dart';
+import 'package:travelassist3/screens/note_list_page.dart';
 
 void main() {
   setUpAll(() {
@@ -22,6 +23,30 @@ void main() {
 
     tearDown(() async {
       await database.close();
+    });
+
+    testWidgets('Note list info button opens the large text dialog',
+        (WidgetTester tester) async {
+      await database.addNote(
+        comment: 'Paris trip info',
+        link: 'https://example.com/trip',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: NoteListPage(database: database)),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('View Info'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Paris trip info'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('https://example.com/trip'), findsNothing);
+      expect(find.byType(Dialog), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
     });
 
     test('Note.link stores multiple tab-separated links and NoteHelpers parses them correctly', () async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:travelassist3/widgets/large_text_dialog.dart';
 
 class CommentInput extends StatelessWidget {
   final TextEditingController controller;
@@ -52,32 +53,10 @@ class CommentInput extends StatelessWidget {
               tooltip: 'Show large text',
               onPressed: () {
                 FocusScope.of(context).unfocus();
-                final text = controller.text;
-                showDialog<void>(
-                  context: context,
-                  builder: (dialogContext) => Dialog.fullscreen(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => Navigator.of(dialogContext).pop(),
-                      child: Scaffold(
-                        body: SafeArea(
-                          child: Center(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                text.isEmpty ? 'No info entered.' : text,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                showLargeTextDialog(
+                  context,
+                  controller.text,
+                  emptyMessage: 'No info entered.',
                 );
               },
             ),

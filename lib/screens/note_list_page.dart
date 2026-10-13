@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
+import '../widgets/large_text_dialog.dart';
 import '../widgets/tag_filter_bar.dart';
-import 'note_actions.dart';
 import 'note_item_page.dart';
 
 class NoteListPage extends StatefulWidget {
@@ -58,16 +58,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  void _openNote(Note note) {
-    final links = note.linkList;
-    if (links.isEmpty) {
-      showNoteDialog(context, comment: note.comment, link: note.link);
-    } else if (links.length == 1) {
-      openNoteLink(context, links.first);
-    } else {
-      showNoteDialog(context, comment: note.comment, link: note.link);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -232,17 +222,15 @@ class _NoteListPageState extends State<NoteListPage> {
                                 ],
                               ),
                               trailing: IconButton(
-                                icon: Icon(note.linkList.isNotEmpty
-                                    ? (note.linkList.length == 1
-                                        ? Icons.open_in_new
-                                        : Icons.list_alt)
-                                    : Icons.visibility_outlined),
-                                tooltip: note.linkList.isNotEmpty
-                                    ? (note.linkList.length == 1
-                                        ? 'Open Link'
-                                        : 'View Links')
-                                    : 'View',
-                                onPressed: () => _openNote(note),
+                                icon: const Icon(Icons.visibility_outlined),
+                                tooltip: 'View Info',
+                                onPressed: () {
+                                  showLargeTextDialog(
+                                    context,
+                                    note.comment,
+                                    emptyMessage: 'No info entered.',
+                                  );
+                                },
                               ),
                             ),
                             ),

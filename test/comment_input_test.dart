@@ -2,8 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:travelassist3/widgets/comment_input.dart';
+import 'package:travelassist3/widgets/large_text_dialog.dart';
 
 void main() {
+  testWidgets('Can show a fullscreen text dialog from another widget',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () =>
+                  showLargeTextDialog(context, 'Details from another widget'),
+              child: const Text('Open details'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open details'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Details from another widget'), findsOneWidget);
+    await tester.tap(find.text('Details from another widget'));
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Shows centered fullscreen info and closes when tapped',
       (tester) async {
     final controller = TextEditingController(text: 'Original info');
