@@ -74,7 +74,7 @@ class _HotelFormState extends State<_HotelForm> {
   late List<String> _tags;
   String _tagDraft = '';
   late DateTime _date;
-  late int _averageDays;
+  late int _days;
   late TransactionState _state;
 
   List<String> get _methods => paymentMethodSuggestions(
@@ -97,7 +97,7 @@ class _HotelFormState extends State<_HotelForm> {
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
-    _averageDays = t?.days ?? 1;
+    _days = t?.days ?? 1;
     _state = t?.transactionState ?? TransactionState.planned;
     if (t == null) _methodController.text = _methods.first;
   }
@@ -145,7 +145,7 @@ class _HotelFormState extends State<_HotelForm> {
         comment: comment,
         tags: _tags,
         date: _date,
-        days: _averageDays,
+        days: _days,
         state: _state,
         link: _links.joined,
       );
@@ -158,7 +158,7 @@ class _HotelFormState extends State<_HotelForm> {
           comment: comment,
           tags: _tags.join(','),
           date: _date,
-          days: _averageDays,
+          days: _days,
           state: _state.index,
           link: _links.joined,
         ),
@@ -207,7 +207,7 @@ class _HotelFormState extends State<_HotelForm> {
             availableTags: knownTags,
             initialInput: _tagDraft,
             labelText: 'Add tag',
-            hintText: 'e.g. breakfast, city-trip',
+            hintText: '',
             onInputChanged: (value) => _tagDraft = value,
             onTagAdded: _addTag,
             onTagRemoved: (tag) => setState(() => _tags.remove(tag)),
@@ -223,9 +223,9 @@ class _HotelFormState extends State<_HotelForm> {
           ),
           HotelOptions(
             state: _state,
-            averageDays: _averageDays,
+            days: _days,
             onStateChanged: (v) => setState(() => _state = v),
-            onAverageDaysChanged: (v) => setState(() => _averageDays = v),
+            onDaysChanged: (v) => setState(() => _days = v),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(

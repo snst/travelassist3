@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
-import 'average_days_input.dart';
+import 'days_input.dart';
 
 /// The planned / booked / paid selector and the "In average" day count of a hotel booking.
 class HotelOptions extends StatelessWidget {
   final TransactionState state;
-  final int averageDays;
+  final int days;
   final ValueChanged<TransactionState> onStateChanged;
-  final ValueChanged<int> onAverageDaysChanged;
+  final ValueChanged<int> onDaysChanged;
 
   const HotelOptions({
     super.key,
     required this.state,
-    required this.averageDays,
+    required this.days,
     required this.onStateChanged,
-    required this.onAverageDaysChanged,
+    required this.onDaysChanged,
   });
 
   @override
@@ -47,7 +47,7 @@ class HotelOptions extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        AverageDaysInput(days: averageDays, onChanged: onAverageDaysChanged),
+        DaysInput(days: days, onChanged: onDaysChanged),
       ],
     );
   }

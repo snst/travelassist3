@@ -35,29 +35,31 @@ class _FeatureGroup {
   const _FeatureGroup(this.title, this.features);
 }
 
-const _columns = 4;
+final _cashTools = <_Feature>[
+  _Feature.add('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
+  _Feature.add('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
+  _Feature.add('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
+  _Feature.view('Currencies', Icons.currency_exchange, (db) => CurrencySettingsScreen(database: db)),
+];
+
+final _calculator = _Feature.view(
+  'Calculator',
+  Icons.calculate,
+  (db) => CalculatorPage(database: db),
+);
 
 final _groups = <_FeatureGroup>[
-  _FeatureGroup('Spending', [
-    _Feature.view('Calculator', Icons.calculate, (db) => CalculatorPage(database: db)),
-    _Feature.add('Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
-    _Feature.view('Entries', Icons.receipt_long, (db) => TransactionListPage(database: db)),
+  _FeatureGroup('Add', [
+    _Feature.add('Add Hotel', Icons.hotel, (db) => HotelPage(database: db)),
+    _Feature.add('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
+    _Feature.add('Add Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
+  ]),
+  _FeatureGroup('View', [
+    _Feature.view('Expenses', Icons.receipt_long, (db) => TransactionListPage(database: db)),
     _Feature.view('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
-  ]),
-  _FeatureGroup('Cash', [
-    _Feature.add('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
-    _Feature.add('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
-    _Feature.add('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
-    _Feature.view('Currencies', Icons.currency_exchange, (db) => CurrencySettingsScreen(database: db)),
-  ]),
-  _FeatureGroup('Stay', [
-    _Feature.add('Hotel', Icons.hotel, (db) => HotelPage(database: db)),
     _Feature.view('Hotels', Icons.calendar_month, (db) => HotelCalendarPage(database: db)),
-  ]),
-  _FeatureGroup('Organize', [
     _Feature.view('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
     _Feature.view('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
-    _Feature.add('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
   ]),
 ];
 
@@ -71,22 +73,88 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLow,
       appBar: AppBar(
-        title: Text(title),
-        backgroundColor: scheme.surface,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                Icons.travel_explore,
+                color: scheme.onPrimary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: scheme.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        actions: [
+          PopupMenuButton<_Feature>(
+            tooltip: 'Cash tools',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (feature) => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => feature.builder(database)),
+            ),
+            itemBuilder: (context) => [
+              for (final feature in _cashTools)
+                PopupMenuItem<_Feature>(
+                  value: feature,
+                  child: Row(
+                    children: [
+                      Icon(feature.icon, size: 20),
+                      const SizedBox(width: 12),
+                      Text(feature.label),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1040),
+            constraints: const BoxConstraints(maxWidth: 760),
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final group in _groups)
-                    _GroupSection(group: group, database: database),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40 + MediaQuery.textScalerOf(context).scale(14),
+                    child: _FeatureCard(
+                      feature: _calculator,
+                      accent: scheme.secondary,
+                      prominent: true,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => _calculator.builder(database),
+                        ),
+                      ),
+                    ),
+                  ),
+                  for (var i = 0; i < _groups.length; i++) ...[
+                    const SizedBox(height: 10),
+                    _GroupSection(
+                      group: _groups[i],
+                      database: database,
+                      accent: scheme.secondary,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -100,53 +168,75 @@ class HomePage extends StatelessWidget {
 class _GroupSection extends StatelessWidget {
   final _FeatureGroup group;
   final AppDatabase database;
+  final Color accent;
 
-  const _GroupSection({required this.group, required this.database});
+  const _GroupSection({
+    required this.group,
+    required this.database,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth < 520
-              ? 2
-              : constraints.maxWidth < 820
-                  ? 3
-                  : 4;
+          final columns = constraints.maxWidth < 600 ? 2 : 4;
+          final width = (constraints.maxWidth - 8 * (columns - 1)) / columns;
+          final height = 40 + MediaQuery.textScalerOf(context).scale(14);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 2, bottom: 6),
-                child: Text(
-                  group.title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    group.title,
+                    style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
-                ),
+                  ),
+                ],
               ),
-              GridView.builder(
-                itemCount: group.features.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  mainAxisExtent: 54,
-                ),
-                itemBuilder: (context, index) {
-                  final feature = group.features[index];
-                  return _FeatureCard(
-                    feature: feature,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => feature.builder(database),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < group.features.length; i++)
+                    SizedBox(
+                      width: i == group.features.length - 1 &&
+                              group.features.length % columns == 1
+                          ? constraints.maxWidth
+                          : width,
+                      height: height,
+                      child: _FeatureCard(
+                        feature: group.features[i],
+                        accent: accent,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => group.features[i].builder(database),
+                          ),
+                        ),
                       ),
                     ),
-                  );
-                },
+                ],
               ),
             ],
           );
@@ -159,47 +249,58 @@ class _GroupSection extends StatelessWidget {
 class _FeatureCard extends StatelessWidget {
   final _Feature feature;
   final VoidCallback onTap;
+  final Color accent;
+  final bool prominent;
 
-  const _FeatureCard({required this.feature, required this.onTap});
+  const _FeatureCard({
+    required this.feature,
+    required this.onTap,
+    required this.accent,
+    this.prominent = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isAdd = feature.kind == _FeatureKind.add;
-    final background =
-        isAdd ? scheme.primaryContainer : scheme.surfaceContainerHigh;
-    final foreground =
-        isAdd ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
-    return Card(
-      margin: EdgeInsets.zero,
+    return Material(
       clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      color: background,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      color: prominent ? scheme.primaryContainer : scheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(13),
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
-              Icon(feature.icon, color: foreground, size: 20),
-              const SizedBox(width: 9),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(feature.icon, color: accent, size: 18),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   feature.label,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: foreground,
-                        fontWeight: FontWeight.w600,
+                        color: prominent
+                            ? scheme.onPrimaryContainer
+                            : scheme.onSurface,
+                        fontWeight: FontWeight.w500,
                       ),
                 ),
               ),
-              if (isAdd)
+              /*if (isAdd)
                 Padding(
                   padding: const EdgeInsets.only(left: 4),
-                  child: Icon(Icons.add, color: foreground, size: 18),
-                ),
+                  child: Icon(Icons.add, color: accent, size: 16),
+                ),*/
             ],
           ),
         ),
