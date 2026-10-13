@@ -60,47 +60,6 @@ class AppDatabase extends _$AppDatabase {
       onCreate: (m) async {
         await m.createAll();
       },
-      onUpgrade: (m, from, to) async {
-        if (from < 2) {
-          await m.createTable(todoItems);
-        }
-        if (from < 3) {
-          await m.createTable(notes);
-        }
-        if (from < 4) {
-          await m.createTable(moneyTransactions);
-        }
-        // Tables created above (from < 4) already have the current layout. Older ones are
-        // rebuilt once: link is new before v6, is_planned (v5-v7) became the state column and
-        // include_in_average became days. include_in_average used to be a bool; the old 0/1
-        // values carry over unchanged, but the rebuild drops the bool CHECK.
-        if (from >= 4 && from < 8) {
-          await m.alterTable(
-            TableMigration(
-              moneyTransactions,
-              columnTransformer: {
-                moneyTransactions.days: const CustomExpression<int>('include_in_average'),
-                if (from >= 5)
-                  moneyTransactions.state: const CustomExpression<int>(
-                    'CASE WHEN is_planned = 1 THEN 0 ELSE 2 END',
-                  ),
-              },
-              newColumns: [
-                if (from < 6) moneyTransactions.link,
-                moneyTransactions.state,
-                moneyTransactions.days,
-              ],
-            ),
-          );
-        }
-        if (from == 8) {
-          await m.renameColumn(
-            moneyTransactions,
-            'include_in_average',
-            moneyTransactions.days,
-          );
-        }
-      },
     );
   }
 
