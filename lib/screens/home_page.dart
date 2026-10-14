@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
 import '../database/database.dart';
 import 'balance_page.dart';
 import 'calculator_page.dart';
@@ -27,9 +28,9 @@ class _Feature {
   final Widget Function(AppDatabase database) builder;
 
   const _Feature.add(this.label, this.icon, this.builder)
-      : kind = _FeatureKind.add;
+    : kind = _FeatureKind.add;
   const _Feature.view(this.label, this.icon, this.builder)
-      : kind = _FeatureKind.view;
+    : kind = _FeatureKind.view;
 }
 
 class _FeatureGroup {
@@ -41,9 +42,21 @@ class _FeatureGroup {
 
 final _cashTools = <_Feature>[
   _Feature.add('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
-  _Feature.add('Deposit', Icons.savings_outlined, (db) => DepositPage(database: db)),
-  _Feature.add('Count Cash', Icons.fact_check_outlined, (db) => CashCountPage(database: db)),
-  _Feature.view('Currencies', Icons.currency_exchange, (db) => CurrencySettingsScreen(database: db)),
+  _Feature.add(
+    'Deposit',
+    Icons.savings_outlined,
+    (db) => DepositPage(database: db),
+  ),
+  _Feature.add(
+    'Count Cash',
+    Icons.fact_check_outlined,
+    (db) => CashCountPage(database: db),
+  ),
+  _Feature.view(
+    'Currencies',
+    Icons.currency_exchange,
+    (db) => CurrencySettingsScreen(database: db),
+  ),
 ];
 
 final _calculator = _Feature.view(
@@ -55,14 +68,47 @@ final _calculator = _Feature.view(
 final _groups = <_FeatureGroup>[
   _FeatureGroup('Add', [
     _Feature.add('Add Hotel', Icons.hotel, (db) => HotelPage(database: db)),
-    _Feature.add('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
-    _Feature.add('Add Expense', Icons.shopping_bag_outlined, (db) => ExpensePage(database: db)),
+    _Feature.add(
+      'Add Note',
+      Icons.note_add,
+      (db) => NoteItemPage(database: db),
+    ),
+    _Feature.add(
+      'Add pos',
+      Icons.add_location_alt,
+      (db) => NoteItemPage(
+        database: db,
+        initialTags: const ['pos'],
+        captureGpsLocation: true,
+      ),
+    ),
+    _Feature.add(
+      'Add Expense',
+      Icons.shopping_bag_outlined,
+      (db) => ExpensePage(database: db),
+    ),
   ]),
   _FeatureGroup('View', [
-    _Feature.view('Expenses', Icons.receipt_long, (db) => TransactionListPage(database: db)),
-    _Feature.view('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
-    _Feature.view('Hotels', Icons.calendar_month, (db) => HotelCalendarPage(database: db)),
-    _Feature.view('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
+    _Feature.view(
+      'Expenses',
+      Icons.receipt_long,
+      (db) => TransactionListPage(database: db),
+    ),
+    _Feature.view(
+      'Balance',
+      Icons.pie_chart,
+      (db) => BalancePage(database: db),
+    ),
+    _Feature.view(
+      'Hotels',
+      Icons.calendar_month,
+      (db) => HotelCalendarPage(database: db),
+    ),
+    _Feature.view(
+      'Checklist',
+      Icons.checklist,
+      (db) => TodoListPage(database: db),
+    ),
     _Feature.view('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
   ]),
 ];
@@ -186,14 +232,14 @@ class HomePage extends StatelessWidget {
     } catch (error) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Could not delete ${content.label.toLowerCase()}: $error'),
+          content: Text(
+            'Could not delete ${content.label.toLowerCase()}: $error',
+          ),
         ),
       );
       return;
     }
-    messenger.showSnackBar(
-      SnackBar(content: Text('${content.label} deleted')),
-    );
+    messenger.showSnackBar(SnackBar(content: Text('${content.label} deleted')));
   }
 
   @override
@@ -220,7 +266,10 @@ class HomePage extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -313,10 +362,7 @@ class _DatabaseContentRow extends StatelessWidget {
   final DatabaseContent content;
   final VoidCallback onDelete;
 
-  const _DatabaseContentRow({
-    required this.content,
-    required this.onDelete,
-  });
+  const _DatabaseContentRow({required this.content, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -391,8 +437,8 @@ class _GroupSection extends StatelessWidget {
                   Text(
                     group.title,
                     style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -403,7 +449,8 @@ class _GroupSection extends StatelessWidget {
                 children: [
                   for (var i = 0; i < group.features.length; i++)
                     SizedBox(
-                      width: i == group.features.length - 1 &&
+                      width:
+                          i == group.features.length - 1 &&
                               group.features.length % columns == 1
                           ? constraints.maxWidth
                           : width,
@@ -471,11 +518,11 @@ class _FeatureCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: prominent
-                            ? scheme.onPrimaryContainer
-                            : scheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    color: prominent
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               /*if (isAdd)

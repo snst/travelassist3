@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import '../database/database.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/link_editor.dart';
@@ -8,12 +11,14 @@ class NoteItemPage extends StatefulWidget {
   final AppDatabase database;
   final Note? note;
   final List<String> initialTags;
+  final bool captureGpsLocation;
 
   const NoteItemPage({
     super.key,
     required this.database,
     this.note,
     this.initialTags = const [],
+    this.captureGpsLocation = false,
   });
 
   @override
@@ -27,6 +32,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
 
   late List<String> _tags;
   List<String> _availableTags = [];
+  bool _gpsCaptureStarted = false;
 
   @override
   void initState() {
@@ -43,6 +49,28 @@ class _NoteItemPageState extends State<NoteItemPage> {
     }
 
     _loadAvailableTags();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.captureGpsLocation && !_gpsCaptureStarted) {
+      _gpsCaptureStarted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_captureGpsLocation());
+      });
+    }
+  }
+
+  Future<void> _captureGpsLocation() async {
+    try {
+      await LinkEditor.attachCurrentGpsLocation(context, _links);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not get GPS location: $error')),
+      );
+    }
   }
 
   Future<void> _loadAvailableTags() async {

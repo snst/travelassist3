@@ -1,4 +1,5 @@
 import 'dart:ffi' hide Size;
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,8 +20,9 @@ void main() {
 
   for (final size in [const Size(393, 820), const Size(412, 915)]) {
     for (final scale in [1.0, 1.3]) {
-      testWidgets('Home fits $size at text scale $scale without scrolling',
-          (tester) async {
+      testWidgets('Home fits $size at text scale $scale without scrolling', (
+        tester,
+      ) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = size;
         addTearDown(tester.view.resetDevicePixelRatio);
@@ -47,8 +49,9 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
-        final scrollable =
-            tester.state<ScrollableState>(find.byType(Scrollable));
+        final scrollable = tester.state<ScrollableState>(
+          find.byType(Scrollable),
+        );
         expect(scrollable.position.maxScrollExtent, 0);
         final addHeading = tester.getRect(find.text('Add'));
         final viewHeading = tester.getRect(find.text('View'));
@@ -56,20 +59,38 @@ void main() {
           tester.getRect(find.text('Calculator')).bottom,
           lessThan(addHeading.top),
         );
-        for (final label in ['Add Expense', 'Add Hotel', 'Add Note']) {
+        for (final label in [
+          'Add Expense',
+          'Add Hotel',
+          'Add Note',
+          'Add pos',
+        ]) {
           final bounds = tester.getRect(find.text(label));
           expect(bounds.top, greaterThan(addHeading.bottom));
           expect(bounds.bottom, lessThan(viewHeading.top));
         }
-        for (final label in ['Expenses', 'Balance', 'Hotels', 'Checklist', 'Notes']) {
+        for (final label in [
+          'Expenses',
+          'Balance',
+          'Hotels',
+          'Checklist',
+          'Notes',
+        ]) {
           expect(
             tester.getRect(find.text(label)).top,
             greaterThan(viewHeading.bottom),
           );
         }
         for (final label in [
-          'Calculator', 'Expenses', 'Balance', 'Add Hotel',
-          'Hotels', 'Checklist', 'Notes', 'Add Note',
+          'Calculator',
+          'Expenses',
+          'Balance',
+          'Add Hotel',
+          'Hotels',
+          'Checklist',
+          'Notes',
+          'Add Note',
+          'Add pos',
         ]) {
           final shortcut = find.ancestor(
             of: find.text(label),
@@ -91,8 +112,9 @@ void main() {
     }
   }
 
-  testWidgets('Home dashboard opens features and navigates back',
-      (WidgetTester tester) async {
+  testWidgets('Home dashboard opens features and navigates back', (
+    WidgetTester tester,
+  ) async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     await database.seedInitialCurrenciesIfEmpty();
 
@@ -138,8 +160,31 @@ void main() {
     await database.close();
   });
 
-  testWidgets('Home settings closes before changing the app theme',
-      (WidgetTester tester) async {
+  testWidgets('Add pos opens a focused note pre-tagged as pos', (
+    WidgetTester tester,
+  ) async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(title: 'Travel Assist', database: database),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Add pos'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add Note'), findsOneWidget);
+    expect(find.text('#pos'), findsOneWidget);
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Home settings closes before changing the app theme', (
+    WidgetTester tester,
+  ) async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
     var darkModeEnabled = false;
