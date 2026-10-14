@@ -59,7 +59,7 @@ class _TagEditorState extends State<TagEditor> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: Chip(
-                    label: Text('#$tag'),
+                    label: Text(tag),
                     onDeleted: () => widget.onTagRemoved(tag),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -111,6 +111,12 @@ class _TagEditorState extends State<TagEditor> {
               ),
             ),
             const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: 'Add star tag',
+              icon: const Icon(Icons.star),
+              onPressed: () => _addTag('⭐'),
+            ),
+            const SizedBox(width: 4),
             IconButton.filled(
               icon: const Icon(Icons.add),
               onPressed: () {

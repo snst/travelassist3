@@ -155,7 +155,7 @@ void main() {
 
       await tester.tap(find.text('hotel'));
       await tester.pumpAndSettle();
-      expect(find.text('#hotel'), findsOneWidget);
+      expect(find.text('hotel'), findsOneWidget);
       expect(tester.widget<TextField>(tagField).controller!.text, isEmpty);
 
       await tester.tap(tagField);

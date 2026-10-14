@@ -33,10 +33,6 @@ class TagFilterBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Filter by Tag:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
               if (selectedTags.isNotEmpty)
                 InkWell(
                   onTap: onClear,
@@ -55,7 +51,7 @@ class TagFilterBar extends StatelessWidget {
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: FilterChip(
-                    label: Text('#$tag'),
+                    label: Text(tag),
                     selected: selectedTags.contains(tag),
                     onSelected: (_) => onTagSelected(tag),
                     visualDensity: VisualDensity.compact,

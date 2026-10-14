@@ -177,7 +177,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Add Note'), findsOneWidget);
-    expect(find.text('#pos'), findsOneWidget);
+    expect(find.text('pos'), findsOneWidget);
     expect(tester.testTextInput.isVisible, isTrue);
     expect(tester.takeException(), isNull);
   });

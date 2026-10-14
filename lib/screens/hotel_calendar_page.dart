@@ -26,7 +26,7 @@ class _Booking {
   String get title {
     final t = transaction;
     if (t.comment.isNotEmpty) return t.comment;
-    if (t.tagList.isNotEmpty) return t.tagList.map((e) => '#$e').join(' ');
+    if (t.tagList.isNotEmpty) return t.tagList.join(' ');
     return 'Hotel';
   }
 }

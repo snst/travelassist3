@@ -74,11 +74,11 @@ final _groups = <_FeatureGroup>[
       (db) => NoteItemPage(database: db),
     ),
     _Feature.add(
-      'Add pos',
+      'Add Position',
       Icons.add_location_alt,
       (db) => NoteItemPage(
         database: db,
-        initialTags: const ['pos'],
+        initialTags: const ['📍'],
         captureGpsLocation: true,
       ),
     ),
@@ -110,6 +110,11 @@ final _groups = <_FeatureGroup>[
       (db) => TodoListPage(database: db),
     ),
     _Feature.view('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
+    _Feature.view(
+      'Starred Notes',
+      Icons.star,
+      (db) => NoteListPage(database: db, initialFilterTags: const ['⭐']),
+    ),
   ]),
 ];
 

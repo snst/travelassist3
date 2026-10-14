@@ -271,7 +271,7 @@ class _EntryTile extends StatelessWidget {
     switch (transaction.type) {
       case TransactionKind.expense:
         return transaction.tagList.isNotEmpty
-            ? transaction.tagList.map((t) => '#$t').join(' ')
+            ? transaction.tagList.join(' ')
             : 'Expense';
       case TransactionKind.withdrawal:
         return 'Withdrawal';
@@ -281,7 +281,7 @@ class _EntryTile extends StatelessWidget {
         return 'Cash Count';
       case TransactionKind.hotel:
         return transaction.tagList.isNotEmpty
-            ? 'Hotel ${transaction.tagList.map((t) => '#$t').join(' ')}'
+            ? 'Hotel ${transaction.tagList.join(' ')}'
             : 'Hotel';
     }
   }

@@ -64,7 +64,7 @@ class _NoteListPageState extends State<NoteListPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectedTags.isEmpty ? 'Travel Notes' : 'Filter: #${_selectedTags.join(', #')}',
+          _selectedTags.isEmpty ? 'Travel Notes' : 'Filter: ${_selectedTags.join(', ')}',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
@@ -200,7 +200,7 @@ class _NoteListPageState extends State<NoteListPage> {
                                                   BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              '#$tag',
+                                              tag,
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
