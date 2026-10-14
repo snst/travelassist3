@@ -17,20 +17,14 @@ import 'todo_list_page.dart';
 import 'transaction_list_page.dart';
 import 'withdrawal_page.dart';
 
-enum _FeatureKind { add, view }
-
 const _settingsMenuItem = 'settings';
 
 class _Feature {
   final String label;
   final IconData icon;
-  final _FeatureKind kind;
   final Widget Function(AppDatabase database) builder;
 
-  const _Feature.add(this.label, this.icon, this.builder)
-    : kind = _FeatureKind.add;
-  const _Feature.view(this.label, this.icon, this.builder)
-    : kind = _FeatureKind.view;
+  const _Feature(this.label, this.icon, this.builder);
 }
 
 class _FeatureGroup {
@@ -40,25 +34,25 @@ class _FeatureGroup {
 }
 
 final _cashTools = <_Feature>[
-  _Feature.add('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
-  _Feature.add(
+  _Feature('ATM', Icons.atm, (db) => WithdrawalPage(database: db)),
+  _Feature(
     'Deposit',
     Icons.savings_outlined,
     (db) => DepositPage(database: db),
   ),
-  _Feature.add(
+  _Feature(
     'Count Cash',
     Icons.fact_check_outlined,
     (db) => CashCountPage(database: db),
   ),
-  _Feature.view(
+  _Feature(
     'Currencies',
     Icons.currency_exchange,
     (db) => CurrencySettingsScreen(database: db),
   ),
 ];
 
-final _calculator = _Feature.view(
+final _calculator = _Feature(
   'Calculator',
   Icons.calculate,
   (db) => CalculatorPage(database: db),
@@ -67,13 +61,9 @@ final _calculator = _Feature.view(
 final _groups = <_FeatureGroup>[
   _FeatureGroup([_calculator]),
   _FeatureGroup([
-    _Feature.add('Add Hotel', Icons.hotel, (db) => HotelPage(database: db)),
-    _Feature.add(
-      'Add Note',
-      Icons.note_add,
-      (db) => NoteItemPage(database: db),
-    ),
-    _Feature.add(
+    _Feature('Add Hotel', Icons.hotel, (db) => HotelPage(database: db)),
+    _Feature('Add Note', Icons.note_add, (db) => NoteItemPage(database: db)),
+    _Feature(
       'Add Position',
       Icons.add_location_alt,
       (db) => NoteItemPage(
@@ -82,35 +72,27 @@ final _groups = <_FeatureGroup>[
         captureGpsLocation: true,
       ),
     ),
-    _Feature.add(
+    _Feature(
       'Add Expense',
       Icons.shopping_bag_outlined,
       (db) => ExpensePage(database: db),
     ),
   ]),
   _FeatureGroup([
-    _Feature.view(
+    _Feature(
       'Expenses',
       Icons.receipt_long,
       (db) => TransactionListPage(database: db),
     ),
-    _Feature.view(
-      'Balance',
-      Icons.pie_chart,
-      (db) => BalancePage(database: db),
-    ),
-    _Feature.view(
+    _Feature('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
+    _Feature(
       'Hotels',
       Icons.calendar_month,
       (db) => HotelCalendarPage(database: db),
     ),
-    _Feature.view(
-      'Checklist',
-      Icons.checklist,
-      (db) => TodoListPage(database: db),
-    ),
-    _Feature.view('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
-    _Feature.view(
+    _Feature('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
+    _Feature('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),
+    _Feature(
       'Starred Notes',
       Icons.star,
       (db) => NoteListPage(database: db, initialFilterTags: const ['⭐']),
@@ -229,12 +211,13 @@ class HomePage extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !context.mounted) return;
 
     final messenger = ScaffoldMessenger.of(context);
     try {
       await database.clearContent(content);
     } catch (error) {
+      if (!context.mounted) return;
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -244,6 +227,7 @@ class HomePage extends StatelessWidget {
       );
       return;
     }
+    if (!context.mounted) return;
     messenger.showSnackBar(SnackBar(content: Text('${content.label} deleted')));
   }
 
@@ -449,22 +433,19 @@ class _FeatureCard extends StatelessWidget {
   final _Feature feature;
   final VoidCallback onTap;
   final Color accent;
-  final bool prominent;
 
   const _FeatureCard({
     required this.feature,
     required this.onTap,
     required this.accent,
-    this.prominent = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isAdd = feature.kind == _FeatureKind.add;
     return Material(
       clipBehavior: Clip.antiAlias,
-      color: prominent ? scheme.primaryContainer : scheme.surfaceContainerLow,
+      color: scheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         onTap: onTap,
@@ -488,18 +469,11 @@ class _FeatureCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: prominent
-                        ? scheme.onPrimaryContainer
-                        : scheme.onSurface,
+                    color: scheme.onSurface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              /*if (isAdd)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Icon(Icons.add, color: accent, size: 16),
-                ),*/
             ],
           ),
         ),
