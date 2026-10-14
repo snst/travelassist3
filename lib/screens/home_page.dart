@@ -34,10 +34,9 @@ class _Feature {
 }
 
 class _FeatureGroup {
-  final String title;
   final List<_Feature> features;
 
-  const _FeatureGroup(this.title, this.features);
+  const _FeatureGroup(this.features);
 }
 
 final _cashTools = <_Feature>[
@@ -66,7 +65,8 @@ final _calculator = _Feature.view(
 );
 
 final _groups = <_FeatureGroup>[
-  _FeatureGroup('Add', [
+  _FeatureGroup([_calculator]),
+  _FeatureGroup([
     _Feature.add('Add Hotel', Icons.hotel, (db) => HotelPage(database: db)),
     _Feature.add(
       'Add Note',
@@ -88,7 +88,7 @@ final _groups = <_FeatureGroup>[
       (db) => ExpensePage(database: db),
     ),
   ]),
-  _FeatureGroup('View', [
+  _FeatureGroup([
     _Feature.view(
       'Expenses',
       Icons.receipt_long,
@@ -331,20 +331,6 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 40 + MediaQuery.textScalerOf(context).scale(14),
-                    child: _FeatureCard(
-                      feature: _calculator,
-                      accent: scheme.secondary,
-                      //prominent: true,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => _calculator.builder(database),
-                        ),
-                      ),
-                    ),
-                  ),
                   for (var i = 0; i < _groups.length; i++) ...[
                     const SizedBox(height: 10),
                     _GroupSection(
@@ -407,8 +393,7 @@ class _GroupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -428,26 +413,6 @@ class _GroupSection extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    group.title,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,

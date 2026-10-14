@@ -53,21 +53,23 @@ void main() {
           find.byType(Scrollable),
         );
         expect(scrollable.position.maxScrollExtent, 0);
-        final addHeading = tester.getRect(find.text('Add'));
-        final viewHeading = tester.getRect(find.text('View'));
+        expect(find.text('Add'), findsNothing);
+        expect(find.text('View'), findsNothing);
+        final calculatorBottom = tester.getRect(find.text('Calculator')).bottom;
+        final expensesTop = tester.getRect(find.text('Expenses')).top;
         expect(
-          tester.getRect(find.text('Calculator')).bottom,
-          lessThan(addHeading.top),
+          calculatorBottom,
+          lessThan(tester.getRect(find.text('Add Hotel')).top),
         );
         for (final label in [
           'Add Expense',
           'Add Hotel',
           'Add Note',
-          'Add pos',
+          'Add Position',
         ]) {
           final bounds = tester.getRect(find.text(label));
-          expect(bounds.top, greaterThan(addHeading.bottom));
-          expect(bounds.bottom, lessThan(viewHeading.top));
+          expect(bounds.top, greaterThan(calculatorBottom));
+          expect(bounds.bottom, lessThan(expensesTop));
         }
         for (final label in [
           'Expenses',
@@ -78,7 +80,7 @@ void main() {
         ]) {
           expect(
             tester.getRect(find.text(label)).top,
-            greaterThan(viewHeading.bottom),
+            greaterThanOrEqualTo(expensesTop),
           );
         }
         for (final label in [
@@ -90,7 +92,7 @@ void main() {
           'Checklist',
           'Notes',
           'Add Note',
-          'Add pos',
+          'Add Position',
         ]) {
           final shortcut = find.ancestor(
             of: find.text(label),
@@ -160,27 +162,28 @@ void main() {
     await database.close();
   });
 
-  testWidgets('Add pos opens a focused note pre-tagged as pos', (
-    WidgetTester tester,
-  ) async {
-    final database = AppDatabase.forTesting(NativeDatabase.memory());
-    addTearDown(database.close);
+  testWidgets(
+    'Add Position opens a focused note pre-tagged with location pin',
+    (WidgetTester tester) async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: HomePage(title: 'Travel Assist', database: database),
-      ),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomePage(title: 'Travel Assist', database: database),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add pos'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Add Position'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Add Note'), findsOneWidget);
-    expect(find.text('pos'), findsOneWidget);
-    expect(tester.testTextInput.isVisible, isTrue);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.text('Add Note'), findsOneWidget);
+      expect(find.text('📍'), findsOneWidget);
+      expect(tester.testTextInput.isVisible, isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Home settings closes before changing the app theme', (
     WidgetTester tester,
