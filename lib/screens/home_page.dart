@@ -80,44 +80,48 @@ class HomePage extends StatelessWidget {
   });
 
   Future<void> _showSettings(BuildContext context) async {
-    var selectedDarkMode = darkModeEnabled;
-    await showDialog<void>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Settings'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Dark mode'),
-                value: selectedDarkMode,
-                onChanged: (enabled) async {
-                  await onDarkModeChanged?.call(enabled);
-                  setDialogState(() => selectedDarkMode = enabled);
-                },
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      builder: (context) => AlertDialog(
+        title: const Text('Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Dark mode'),
+              value: darkModeEnabled,
+              onChanged: (enabled) => Navigator.of(context).pop(enabled),
+            ),
+            const Divider(),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: () => _showDatabaseContent(context),
+                icon: const Icon(Icons.storage_outlined),
+                label: const Text('Manage database content'),
               ),
-              const Divider(),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: () => _showDatabaseContent(context),
-                  icon: const Icon(Icons.storage_outlined),
-                  label: const Text('Manage database content'),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
+    final enabled = await navigator.push<bool>(route);
+    // The route completes when its exit animation ends; its widgets are only
+    // unmounted in the following frame, so wait for that before changing theme.
+    await route.completed;
+    await WidgetsBinding.instance.endOfFrame;
+    if (enabled != null && context.mounted) {
+      await onDarkModeChanged?.call(enabled);
+    }
   }
 
   Future<void> _showDatabaseContent(BuildContext context) async {

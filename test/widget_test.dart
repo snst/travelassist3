@@ -1,4 +1,4 @@
-import 'dart:ffi';
+import 'dart:ffi' hide Size;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,20 +56,20 @@ void main() {
           tester.getRect(find.text('Calculator')).bottom,
           lessThan(addHeading.top),
         );
-        for (final label in ['Expense', 'Hotel', 'Add Note']) {
+        for (final label in ['Add Expense', 'Add Hotel', 'Add Note']) {
           final bounds = tester.getRect(find.text(label));
           expect(bounds.top, greaterThan(addHeading.bottom));
           expect(bounds.bottom, lessThan(viewHeading.top));
         }
-        for (final label in ['Entries', 'Balance', 'Hotels', 'Checklist', 'Notes']) {
+        for (final label in ['Expenses', 'Balance', 'Hotels', 'Checklist', 'Notes']) {
           expect(
             tester.getRect(find.text(label)).top,
             greaterThan(viewHeading.bottom),
           );
         }
         for (final label in [
-          'Calculator', 'Expense', 'Entries', 'Balance',
-          'Hotel', 'Hotels', 'Checklist', 'Notes', 'Add Note',
+          'Calculator', 'Expenses', 'Balance', 'Add Hotel',
+          'Hotels', 'Checklist', 'Notes', 'Add Note',
         ]) {
           final shortcut = find.ancestor(
             of: find.text(label),
@@ -134,36 +134,72 @@ void main() {
     expect(find.text('Currency Calculator'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
     await database.close();
   });
 
-  testWidgets('Home settings menu lets users select dark mode',
+  testWidgets('Home settings closes before changing the app theme',
       (WidgetTester tester) async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
     var darkModeEnabled = false;
+    final changes = <bool>[];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: HomePage(
-          title: 'Travel Assist',
-          database: database,
-          onDarkModeChanged: (enabled) async {
-            darkModeEnabled = enabled;
-          },
+      StatefulBuilder(
+        builder: (context, setAppState) => MaterialApp(
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
+          home: HomePage(
+            title: 'Travel Assist',
+            database: database,
+            darkModeEnabled: darkModeEnabled,
+            onDarkModeChanged: (enabled) async {
+              expect(find.byType(AlertDialog), findsNothing);
+              changes.add(enabled);
+              setAppState(() => darkModeEnabled = enabled);
+            },
+          ),
         ),
       ),
     );
+
+    for (final enabled in [true, false]) {
+      await tester.tap(find.byTooltip('Cash tools'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dark mode'), findsOneWidget);
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
+        !enabled,
+      );
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
+
+      expect(darkModeEnabled, enabled);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(
+        Theme.of(tester.element(find.byType(HomePage))).brightness,
+        enabled ? Brightness.dark : Brightness.light,
+      );
+      expect(tester.takeException(), isNull);
+    }
 
     await tester.tap(find.byTooltip('Cash tools'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Dark mode'), findsOneWidget);
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
-    expect(darkModeEnabled, isTrue);
+    expect(changes, [true, false]);
+    expect(darkModeEnabled, isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
   });
 }

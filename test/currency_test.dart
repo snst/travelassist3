@@ -25,8 +25,32 @@ void main() {
     await database.seedInitialCurrenciesIfEmpty();
     final currencies = await database.getAllCurrencies();
 
-    expect(currencies.length, 4);
-    expect(currencies.any((c) => c.shortName == 'EUR' && c.isHome), isTrue);
+    expect(currencies, hasLength(2));
+    expect(
+      currencies.map((currency) => currency.shortName).toSet(),
+      {'€', r'$'},
+    );
+    expect(
+      currencies.any(
+        (currency) =>
+            currency.name == 'Euro' &&
+            currency.shortName == '€' &&
+            currency.isHome,
+      ),
+      isTrue,
+    );
+    expect(
+      currencies.any(
+        (currency) =>
+            currency.name == 'US Dollar' &&
+            currency.shortName == r'$' &&
+            !currency.isHome,
+      ),
+      isTrue,
+    );
+
+    await database.seedInitialCurrenciesIfEmpty();
+    expect(await database.getAllCurrencies(), hasLength(2));
   });
 
   test('Add new currency', () async {
@@ -45,13 +69,13 @@ void main() {
     await database.seedInitialCurrenciesIfEmpty();
 
     final currencies = await database.getAllCurrencies();
-    final usd = currencies.firstWhere((c) => c.shortName == 'USD');
+    final usd = currencies.firstWhere((c) => c.shortName == r'$');
 
     await database.setHomeCurrency(usd.id);
 
     final updatedCurrencies = await database.getAllCurrencies();
-    final updatedUsd = updatedCurrencies.firstWhere((c) => c.shortName == 'USD');
-    final updatedEur = updatedCurrencies.firstWhere((c) => c.shortName == 'EUR');
+    final updatedUsd = updatedCurrencies.firstWhere((c) => c.shortName == r'$');
+    final updatedEur = updatedCurrencies.firstWhere((c) => c.shortName == '€');
 
     expect(updatedUsd.isHome, isTrue);
     expect(updatedEur.isHome, isFalse);
@@ -61,11 +85,11 @@ void main() {
     await database.seedInitialCurrenciesIfEmpty();
 
     final currencies = await database.getAllCurrencies();
-    final jpy = currencies.firstWhere((c) => c.shortName == 'JPY');
+    final usd = currencies.firstWhere((c) => c.shortName == r'$');
 
-    await database.deleteCurrency(jpy.id);
+    await database.deleteCurrency(usd.id);
 
     final remaining = await database.getAllCurrencies();
-    expect(remaining.any((c) => c.shortName == 'JPY'), isFalse);
+    expect(remaining.map((currency) => currency.shortName), ['€']);
   });
 }

@@ -130,13 +130,13 @@ class AppDatabase extends _$AppDatabase {
     if (count.isEmpty) {
       await addCurrency(
         name: 'Euro',
-        shortName: 'EUR',
+        shortName: '€',
         rate: 1.0,
         isHome: true,
       );
       await addCurrency(
         name: 'US Dollar',
-        shortName: 'USD',
+        shortName: r'$',
         rate: 1.08,
         isHome: false,
       );

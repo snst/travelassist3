@@ -41,12 +41,16 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Paris trip info'),
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text('Paris trip info'),
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('https://example.com/trip'), findsNothing);
       expect(find.byType(Dialog), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     test('Note.link stores multiple tab-separated links and NoteHelpers parses them correctly', () async {
@@ -122,6 +126,8 @@ void main() {
       // First link is removed
       expect(find.text('https://link1.com'), findsNothing);
       expect(find.text('https://link2.com'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('tag suggestions reopen after selecting a tag', (WidgetTester tester) async {
@@ -140,8 +146,7 @@ void main() {
       final tagField = find.byWidgetPredicate(
         (widget) =>
             widget is TextField &&
-            widget.decoration?.hintText ==
-                'Add tag (e.g. hotel, map, important)',
+            widget.decoration?.hintText == 'Add tag',
       );
 
       await tester.tap(tagField);
@@ -156,6 +161,8 @@ void main() {
       await tester.tap(tagField);
       await tester.pumpAndSettle();
       expect(find.text('flight'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 }

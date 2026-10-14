@@ -48,13 +48,17 @@ void main() {
 
     expect(find.byType(Dialog), findsOneWidget);
     expect(find.byType(AppBar), findsNothing);
-    final preview = tester.widget<Text>(find.text(text));
+    final previewFinder = find.descendant(
+      of: find.byType(Dialog),
+      matching: find.text(text),
+    );
+    final preview = tester.widget<Text>(previewFinder);
     expect(preview.data, text);
     expect(preview.textAlign, TextAlign.center);
     expect(preview.style?.fontSize, 26);
     expect(controller.text, text);
 
-    await tester.tap(find.text(text));
+    await tester.tap(previewFinder);
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNothing);
     expect(controller.text, text);
@@ -95,7 +99,15 @@ void main() {
     await tester.tap(find.byTooltip('Show large text'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(tester.widget<Text>(find.text(text)).data, text);
+    expect(
+      tester.widget<Text>(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(text),
+        ),
+      ).data,
+      text,
+    );
     final scrollView = find.byType(SingleChildScrollView);
     final scrollable = find.descendant(
       of: scrollView,
