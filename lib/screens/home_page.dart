@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../database/database.dart';
 import 'balance_page.dart';
@@ -366,7 +368,11 @@ class _GroupSection extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final columns = constraints.maxWidth < 600 ? 2 : 4;
-          final width = (constraints.maxWidth - 8 * (columns - 1)) / columns;
+          // Clamped: the first frame can be laid out with a zero-width viewport.
+          final width = math.max(
+            0.0,
+            (constraints.maxWidth - 8 * (columns - 1)) / columns,
+          );
           final height = 40 + MediaQuery.textScalerOf(context).scale(14);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
