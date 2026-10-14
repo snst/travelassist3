@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/currency_codes.dart';
@@ -86,10 +87,10 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
   late DateTime _date;
 
   List<String> get _methods => paymentMethodSuggestions(
-        transactions: widget.transactions,
-        kind: TransactionKind.withdrawal,
-        current: _methodController.text,
-      );
+    transactions: widget.transactions,
+    kind: TransactionKind.withdrawal,
+    current: _methodController.text,
+  );
 
   @override
   void initState() {
@@ -101,7 +102,8 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
     _commentController = TextEditingController(text: t?.comment ?? '');
     _methodController = TextEditingController(text: t?.method ?? '');
     _links = LinkListController(t?.linkList ?? []);
-    _currencyCode = t?.currency ??
+    _currencyCode =
+        t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _date = t?.date ?? DateTime.now();
     if (t == null) {
@@ -190,12 +192,12 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
           const SizedBox(height: 20),
-          LinkEditor(controller: _links),
-          const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
           ),
+          const SizedBox(height: 16),
+          LinkEditor(controller: _links),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,

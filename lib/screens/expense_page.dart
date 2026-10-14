@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/currency_codes.dart';
@@ -94,10 +95,10 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   bool _gpsLocationCaptureStarted = false;
 
   List<String> get _methods => paymentMethodSuggestions(
-        transactions: widget.transactions,
-        kind: TransactionKind.expense,
-        current: _methodController.text,
-      );
+    transactions: widget.transactions,
+    kind: TransactionKind.expense,
+    current: _methodController.text,
+  );
 
   @override
   void initState() {
@@ -109,7 +110,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _commentController = TextEditingController(text: t?.comment ?? '');
     _methodController = TextEditingController(text: t?.method ?? '');
     _links = LinkListController(t?.linkList ?? []);
-    _currencyCode = t?.currency ??
+    _currencyCode =
+        t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
@@ -123,8 +125,10 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     super.didChangeDependencies();
     if (widget.existing == null && !_gpsLocationCaptureStarted) {
       _gpsLocationCaptureStarted = true;
-      _gpsLocationCapture =
-          LinkEditor.attachCurrentGpsLocation(context, _links);
+      _gpsLocationCapture = LinkEditor.attachCurrentGpsLocation(
+        context,
+        _links,
+      );
     }
   }
 
@@ -200,8 +204,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final codes = currencyCodesWithSelected(widget.currencies, _currencyCode);
     final knownTags = <String>{
       for (final t in widget.transactions) ...t.tagList,
-    }.where((t) => !_tags.contains(t)).toList()
-      ..sort();
+    }.where((t) => !_tags.contains(t)).toList()..sort();
 
     return Form(
       key: _formKey,
@@ -243,8 +246,6 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
           const SizedBox(height: 20),
-          LinkEditor(controller: _links),
-          const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
@@ -256,10 +257,14 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             onAverageDaysChanged: (v) => setState(() => _averageDays = v),
           ),
           const SizedBox(height: 16),
+          LinkEditor(controller: _links),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: Text(widget.existing == null ? 'Save Expense' : 'Update Expense'),
+            label: Text(
+              widget.existing == null ? 'Save Expense' : 'Update Expense',
+            ),
           ),
         ],
       ),

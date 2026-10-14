@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/currency_codes.dart';
@@ -92,10 +93,10 @@ class _HotelFormState extends State<_HotelForm> {
   late TransactionState _state;
 
   List<String> get _methods => paymentMethodSuggestions(
-        transactions: widget.transactions,
-        kind: TransactionKind.hotel,
-        current: _methodController.text,
-      );
+    transactions: widget.transactions,
+    kind: TransactionKind.hotel,
+    current: _methodController.text,
+  );
 
   @override
   void initState() {
@@ -107,7 +108,8 @@ class _HotelFormState extends State<_HotelForm> {
     _commentController = TextEditingController(text: t?.comment ?? '');
     _methodController = TextEditingController(text: t?.method ?? '');
     _links = LinkListController(t?.linkList ?? []);
-    _currencyCode = t?.currency ??
+    _currencyCode =
+        t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
@@ -186,8 +188,7 @@ class _HotelFormState extends State<_HotelForm> {
     final codes = currencyCodesWithSelected(widget.currencies, _currencyCode);
     final knownTags = <String>{
       for (final t in widget.transactions) ...t.tagList,
-    }.where((t) => !_tags.contains(t)).toList()
-      ..sort();
+    }.where((t) => !_tags.contains(t)).toList()..sort();
 
     return Form(
       key: _formKey,
@@ -229,8 +230,6 @@ class _HotelFormState extends State<_HotelForm> {
           const SizedBox(height: 20),
           CommentInput(controller: _commentController),
           const SizedBox(height: 20),
-          LinkEditor(controller: _links),
-          const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
@@ -242,10 +241,14 @@ class _HotelFormState extends State<_HotelForm> {
             onDaysChanged: (v) => setState(() => _days = v),
           ),
           const SizedBox(height: 16),
+          LinkEditor(controller: _links),
+          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: Text(widget.existing == null ? 'Save Hotel' : 'Update Hotel'),
+            label: Text(
+              widget.existing == null ? 'Save Hotel' : 'Update Hotel',
+            ),
           ),
         ],
       ),
