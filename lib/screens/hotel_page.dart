@@ -39,13 +39,13 @@ class _HotelPageState extends State<HotelPage> {
           ? 'Add Hotel'
           : 'Edit ${transactionLabel(TransactionKind.hotel)}',
       actions: [
+        if (existing != null)
+          DeleteEntryButton(database: widget.database, transaction: existing),
         IconButton(
           tooltip: existing == null ? 'Save Hotel' : 'Update Hotel',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
-        if (existing != null)
-          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _HotelForm(
         key: _formKey,

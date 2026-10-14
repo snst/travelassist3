@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../screens/note_actions.dart';
 
+enum _LinkItemAction { open, copy, remove }
+
 /// Holds the editable list of links shown by [LinkEditor].
 class LinkListController extends ChangeNotifier {
   final List<TextEditingController> _fields = [];
@@ -212,24 +214,51 @@ class LinkEditor extends StatelessWidget {
                           ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.open_in_new),
-                        tooltip: 'Open Link',
-                        onPressed: () => openNoteLink(context, field.text),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy),
-                        tooltip: 'Copy Link',
-                        onPressed: () =>
-                            copyNoteText(context, field.text, 'Link'),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                        tooltip: 'Remove Link',
-                        onPressed: () => _confirmRemove(context, index),
+                      PopupMenuButton<_LinkItemAction>(
+                        tooltip: 'Actions for Link ${index + 1}',
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (action) async {
+                          switch (action) {
+                            case _LinkItemAction.open:
+                              await openNoteLink(context, field.text);
+                            case _LinkItemAction.copy:
+                              copyNoteText(context, field.text, 'Link');
+                            case _LinkItemAction.remove:
+                              await _confirmRemove(context, index);
+                          }
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: _LinkItemAction.open,
+                            child: Row(
+                              children: [
+                                Icon(Icons.open_in_new),
+                                SizedBox(width: 12),
+                                Text('Open Link'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _LinkItemAction.copy,
+                            child: Row(
+                              children: [
+                                Icon(Icons.copy),
+                                SizedBox(width: 12),
+                                Text('Copy Link'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: _LinkItemAction.remove,
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: Colors.red),
+                                SizedBox(width: 12),
+                                Text('Remove Link'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   );

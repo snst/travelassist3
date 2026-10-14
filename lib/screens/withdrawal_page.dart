@@ -37,13 +37,13 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
           ? 'Add ATM Withdrawal'
           : 'Edit ${transactionLabel(TransactionKind.withdrawal)}',
       actions: [
+        if (existing != null)
+          DeleteEntryButton(database: widget.database, transaction: existing),
         IconButton(
           tooltip: existing == null ? 'Save Withdrawal' : 'Update Withdrawal',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
-        if (existing != null)
-          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _WithdrawalForm(
         key: _formKey,

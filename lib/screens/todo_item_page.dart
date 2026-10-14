@@ -66,17 +66,17 @@ class _TodoItemPageState extends State<TodoItemPage> {
         title: Text(isNew ? 'Add Item' : 'Edit Item'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: isNew ? 'Add to Checklist' : 'Save Changes',
-            onPressed: _saveItem,
-          ),
           if (!isNew)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               tooltip: 'Delete Item',
               onPressed: _confirmDelete,
             ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: isNew ? 'Add to Checklist' : 'Save Changes',
+            onPressed: _saveItem,
+          ),
         ],
       ),
       body: SingleChildScrollView(

@@ -39,13 +39,13 @@ class _ExpensePageState extends State<ExpensePage> {
           ? 'Add Expense'
           : 'Edit ${transactionLabel(TransactionKind.expense)}',
       actions: [
+        if (existing != null)
+          DeleteEntryButton(database: widget.database, transaction: existing),
         IconButton(
           tooltip: existing == null ? 'Save Expense' : 'Update Expense',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
-        if (existing != null)
-          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _ExpenseForm(
         key: _formKey,

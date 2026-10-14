@@ -33,13 +33,13 @@ class _DepositPageState extends State<DepositPage> {
           ? 'Add Deposit'
           : 'Edit ${transactionLabel(TransactionKind.deposit)}',
       actions: [
+        if (existing != null)
+          DeleteEntryButton(database: widget.database, transaction: existing),
         IconButton(
           tooltip: existing == null ? 'Save Deposit' : 'Update Deposit',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
-        if (existing != null)
-          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _DepositForm(
         key: _formKey,

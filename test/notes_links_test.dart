@@ -6,6 +6,7 @@ import 'package:sqlite3/open.dart';
 import 'package:travelassist3/database/database.dart';
 import 'package:travelassist3/screens/note_item_page.dart';
 import 'package:travelassist3/screens/note_list_page.dart';
+import 'package:travelassist3/widgets/link_editor.dart';
 
 void main() {
   setUpAll(() {
@@ -98,11 +99,16 @@ void main() {
       expect(find.text('https://link1.com'), findsOneWidget);
       expect(find.text('https://link2.com'), findsOneWidget);
 
-      // Tap delete on the first link
-      final deleteButtons = find.byIcon(Icons.delete_outline);
-      expect(deleteButtons, findsNWidgets(2));
+      final firstLinkActions = find.byTooltip('Actions for Link 1');
+      expect(firstLinkActions, findsOneWidget);
+      expect(find.byTooltip('Actions for Link 2'), findsOneWidget);
 
-      await tester.tap(deleteButtons.first);
+      await tester.tap(firstLinkActions);
+      await tester.pumpAndSettle();
+      expect(find.text('Open Link'), findsOneWidget);
+      expect(find.text('Copy Link'), findsOneWidget);
+      expect(find.text('Remove Link'), findsOneWidget);
+      await tester.tap(find.text('Remove Link'));
       await tester.pumpAndSettle();
 
       // Check confirmation dialog appears
@@ -116,8 +122,10 @@ void main() {
       // Link still exists
       expect(find.text('https://link1.com'), findsOneWidget);
 
-      // Tap delete on first link again and confirm
-      await tester.tap(deleteButtons.first);
+      // Remove the first link again and confirm
+      await tester.tap(firstLinkActions);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove Link'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Delete'));
@@ -127,6 +135,28 @@ void main() {
       expect(find.text('https://link1.com'), findsNothing);
       expect(find.text('https://link2.com'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('paste, new and GPS buttons remain available',
+        (WidgetTester tester) async {
+      final controller = LinkListController();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: LinkEditor(controller: controller)),
+        ),
+      );
+
+      expect(find.text('Paste'), findsOneWidget);
+      expect(find.text('New'), findsOneWidget);
+      expect(find.text('GPS'), findsOneWidget);
+
+      await tester.tap(find.text('New'));
+      await tester.pumpAndSettle();
+      expect(controller.fields, hasLength(2));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      controller.dispose();
       await tester.pump(const Duration(seconds: 1));
     });
 

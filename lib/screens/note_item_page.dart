@@ -113,17 +113,17 @@ class _NoteItemPageState extends State<NoteItemPage> {
         title: Text(isNew ? 'Add Note' : 'Edit Note'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: isNew ? 'Save Note' : 'Update Note',
-            onPressed: _saveNote,
-          ),
           if (!isNew)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
               tooltip: 'Delete Note',
               onPressed: _confirmDelete,
             ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: isNew ? 'Save Note' : 'Update Note',
+            onPressed: _saveNote,
+          ),
         ],
       ),
       body: SingleChildScrollView(

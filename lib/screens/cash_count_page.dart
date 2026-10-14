@@ -35,13 +35,13 @@ class _CashCountPageState extends State<CashCountPage> {
           ? 'Count Cash'
           : 'Edit ${transactionLabel(TransactionKind.cashCount)}',
       actions: [
+        if (existing != null)
+          DeleteEntryButton(database: widget.database, transaction: existing),
         IconButton(
           tooltip: existing == null ? 'Save Count' : 'Update Count',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
-        if (existing != null)
-          DeleteEntryButton(database: widget.database, transaction: existing),
       ],
       builder: (context, currencies, transactions) => _CashCountForm(
         key: _formKey,
