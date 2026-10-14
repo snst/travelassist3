@@ -13,12 +13,18 @@ class NoteItemPage extends StatefulWidget {
   final List<String> initialTags;
   final bool captureGpsLocation;
 
+  /// Prefill for a new note, e.g. content received from the share sheet.
+  final List<String> initialLinks;
+  final String initialComment;
+
   const NoteItemPage({
     super.key,
     required this.database,
     this.note,
     this.initialTags = const [],
     this.captureGpsLocation = false,
+    this.initialLinks = const [],
+    this.initialComment = '',
   });
 
   @override
@@ -38,9 +44,10 @@ class _NoteItemPageState extends State<NoteItemPage> {
   void initState() {
     super.initState();
     final note = widget.note;
-    _commentController = TextEditingController(text: note?.comment ?? '');
+    _commentController =
+        TextEditingController(text: note?.comment ?? widget.initialComment);
 
-    _links = LinkListController(note?.linkList ?? []);
+    _links = LinkListController(note?.linkList ?? widget.initialLinks);
 
     if (note != null) {
       _tags = note.tagList;

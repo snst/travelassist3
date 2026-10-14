@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'database/database.dart';
 import 'screens/home_page.dart';
+import 'screens/share_target.dart';
+import 'utils/shared_content.dart';
 
 const _darkModePreferenceKey = 'darkModeEnabled';
 
@@ -21,6 +23,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final AppDatabase _database;
+  final _navigatorKey = GlobalKey<NavigatorState>();
   bool _darkModeEnabled = false;
 
   @override
@@ -29,6 +32,17 @@ class _MyAppState extends State<MyApp> {
     _database = AppDatabase();
     _database.seedInitialCurrenciesIfEmpty();
     unawaited(_loadDarkModePreference());
+    ShareChannel.listen(_onShare);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final content = await ShareChannel.initialShare();
+      if (content != null) _onShare(content);
+    });
+  }
+
+  void _onShare(SharedContent content) {
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+    unawaited(handleSharedContent(context, _database, content));
   }
 
   Future<void> _loadDarkModePreference() async {
@@ -59,6 +73,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'Travel Assist',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

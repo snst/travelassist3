@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utils/shared_content.dart';
 
 Uri? _toUri(String text) {
   final lower = text.toLowerCase();
@@ -36,7 +37,9 @@ Future<void> openNoteLink(BuildContext context, String link) async {
   if (text.isEmpty) return;
   final messenger = ScaffoldMessenger.of(context);
 
-  var launched = await _tryLaunch(_toUri(text));
+  var launched = text.toLowerCase().startsWith('content://')
+      ? await ShareChannel.openUri(text)
+      : await _tryLaunch(_toUri(text));
   if (!launched && text.toLowerCase().startsWith('geo:')) {
     launched = await _tryLaunch(_openStreetMapUri(text));
   }
