@@ -101,11 +101,12 @@ void main() {
 
       final firstLinkActions = find.byTooltip('Actions for Link 1');
       expect(firstLinkActions, findsOneWidget);
+      expect(find.byTooltip('Open Link'), findsWidgets);
       expect(find.byTooltip('Actions for Link 2'), findsOneWidget);
 
       await tester.tap(firstLinkActions);
       await tester.pumpAndSettle();
-      expect(find.text('Open Link'), findsOneWidget);
+      expect(find.text('Open Link'), findsNothing);
       expect(find.text('Copy Link'), findsOneWidget);
       expect(find.text('Remove Link'), findsOneWidget);
       await tester.tap(find.text('Remove Link'));

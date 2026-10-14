@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import '../screens/note_actions.dart';
 
-enum _LinkItemAction { open, copy, remove }
+enum _LinkItemAction { copy, remove }
 
 /// Holds the editable list of links shown by [LinkEditor].
 class LinkListController extends ChangeNotifier {
@@ -214,13 +214,16 @@ class LinkEditor extends StatelessWidget {
                           ),
                         ),
                       ),
+                      IconButton(
+                        tooltip: 'Open Link',
+                        icon: const Icon(Icons.open_in_new),
+                        onPressed: () => openNoteLink(context, field.text),
+                      ),
                       PopupMenuButton<_LinkItemAction>(
                         tooltip: 'Actions for Link ${index + 1}',
                         icon: const Icon(Icons.more_vert),
                         onSelected: (action) async {
                           switch (action) {
-                            case _LinkItemAction.open:
-                              await openNoteLink(context, field.text);
                             case _LinkItemAction.copy:
                               copyNoteText(context, field.text, 'Link');
                             case _LinkItemAction.remove:
@@ -228,16 +231,6 @@ class LinkEditor extends StatelessWidget {
                           }
                         },
                         itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: _LinkItemAction.open,
-                            child: Row(
-                              children: [
-                                Icon(Icons.open_in_new),
-                                SizedBox(width: 12),
-                                Text('Open Link'),
-                              ],
-                            ),
-                          ),
                           PopupMenuItem(
                             value: _LinkItemAction.copy,
                             child: Row(
