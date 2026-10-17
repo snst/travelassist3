@@ -38,7 +38,7 @@ class DateTimePickerTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: const Icon(Icons.event),
       title: Text(formatDay(value)),
-      trailing: const Icon(Icons.edit_calendar),
+      //trailing: const Icon(Icons.edit_calendar),
       onTap: () => _pickDateTime(context),
     );
   }

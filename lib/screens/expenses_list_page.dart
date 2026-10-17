@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../balance/balance.dart';
 import '../calculator/currency_value.dart';
 import '../database/database.dart';
@@ -9,10 +10,10 @@ import '../widgets/tag_filter_bar.dart';
 import 'balance_page.dart';
 import 'transaction_navigation.dart';
 
-class TransactionListPage extends StatelessWidget {
+class ExpensesListPage extends StatelessWidget {
   final AppDatabase database;
 
-  const TransactionListPage({super.key, required this.database});
+  const ExpensesListPage({super.key, required this.database});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +29,7 @@ class TransactionListPage extends StatelessWidget {
 
             return Scaffold(
               appBar: AppBar(
-                title: const Text('Entries'),
+                title: const Text('Expenses'),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
                 actions: [
                   if (!loading && currencies.isNotEmpty)
@@ -53,20 +54,20 @@ class TransactionListPage extends StatelessWidget {
               body: loading
                   ? const Center(child: CircularProgressIndicator())
                   : currencies.isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text(
-                              'No currencies available.\nPlease add currencies in Currencies first.',
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      : _EntriesView(
-                          database: database,
-                          currencies: currencies,
-                          transactions: transactions,
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No currencies available.\nPlease add currencies in Currencies first.',
+                          textAlign: TextAlign.center,
                         ),
+                      ),
+                    )
+                  : _EntriesView(
+                      database: database,
+                      currencies: currencies,
+                      transactions: transactions,
+                    ),
             );
           },
         );
@@ -143,7 +144,7 @@ class _EntriesViewState extends State<_EntriesView> {
         CurrencyValue(t.amount, byCode[t.currency]).convertTo(home);
 
     final filteredTransactions = widget.transactions.where((t) {
-      return !t.isSpending || _selectedTags.every(t.tagList.contains);
+      return _selectedTags.isEmpty || _selectedTags.every(t.tagList.contains);
     }).toList();
 
     final tagSet = <String>{..._selectedTags};
@@ -154,8 +155,9 @@ class _EntriesViewState extends State<_EntriesView> {
 
     // Entries are sorted newest first; flatten into day headers and entries.
     final dayExpenses = <DateTime, CurrencyValue>{};
-    for (final t
-        in filteredTransactions.where((t) => t.isSpending && !t.isPending)) {
+    for (final t in filteredTransactions.where(
+      (t) => t.isSpending && !t.isPending,
+    )) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
     }
@@ -175,7 +177,9 @@ class _EntriesViewState extends State<_EntriesView> {
       children: [
         Expanded(
           child: rows.isEmpty
-              ? const Center(child: Text('No expenses match the selected tags.'))
+              ? const Center(
+                  child: Text('No expenses match the selected tags.'),
+                )
               : ListView.builder(
                   padding: EdgeInsets.fromLTRB(
                     12,
@@ -189,7 +193,8 @@ class _EntriesViewState extends State<_EntriesView> {
                     if (row is _DayHeader) {
                       final theme = Theme.of(context);
                       final today = DateTime.now();
-                      final isToday = row.day.year == today.year &&
+                      final isToday =
+                          row.day.year == today.year &&
                           row.day.month == today.month &&
                           row.day.day == today.day;
                       final dayStyle = isToday
@@ -229,8 +234,7 @@ class _EntriesViewState extends State<_EntriesView> {
                     return _EntryTile(
                       transaction: t,
                       home: toHome(t),
-                      onTap: () =>
-                          openTransaction(context, widget.database, t),
+                      onTap: () => openTransaction(context, widget.database, t),
                       onDelete: () => _delete(context, t),
                     );
                   },
@@ -289,17 +293,45 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final titleStyle =
+        ListTileTheme.of(context).titleTextStyle ??
+        Theme.of(context).textTheme.titleMedium;
     final t = transaction;
     final detailStyle = TextStyle(color: scheme.outline, fontSize: 13);
     final isOutgoing = t.isSpending;
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
-    final isForeign = home.currency == null || home.currencyString != t.currency;
+    final isForeign =
+        home.currency == null || home.currencyString != t.currency;
     final showStatusBadge = t.isPlanned || (t.isHotel && t.isBooked);
+    final hasInfo = t.comment.isNotEmpty;
+    final tags = t.tagList.join(' ');
     final details = [
       if (!t.isHotel && t.isBooked) 'Booked',
-      if (t.isSpending || t.isWithdrawal) (t.method.isEmpty ? cashMethod : t.method),
-      if (t.comment.isNotEmpty) t.comment,
+      if (t.isSpending || t.isWithdrawal)
+        (t.method.isEmpty ? cashMethod : t.method),
     ].join(' · ');
+    final subtitle = <Widget>[
+      if (t.isHotel) const SizedBox(height: 2),
+      if (hasInfo && tags.isNotEmpty)
+        Text(
+          tags,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle,
+        ),
+      if (t.isHotel && t.days > 0)
+        Text(
+          t.days == 1 ? '1 day' : '${t.days} days',
+          style: detailStyle.copyWith(fontWeight: FontWeight.w600),
+        ),
+      if (details.isNotEmpty)
+        Text(
+          details,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: detailStyle,
+        ),
+    ];
 
     return Dismissible(
       key: ValueKey(t.id),
@@ -323,9 +355,7 @@ class _EntryTile extends StatelessWidget {
                 backgroundColor: t.isHotel
                     ? scheme.secondaryContainer
                     : scheme.surfaceContainerHigh,
-                child: Icon(
-                  t.isHotel ? Icons.hotel : transactionIcon(t.type),
-                ),
+                child: Icon(t.isHotel ? Icons.hotel : transactionIcon(t.type)),
               ),
               if (showStatusBadge)
                 Positioned(
@@ -340,24 +370,18 @@ class _EntryTile extends StatelessWidget {
                 ),
             ],
           ),
-          title: Text(_title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: t.isHotel
-              ? Column(
+          title: Text(
+            hasInfo ? t.comment : _title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: titleStyle,
+          ),
+          subtitle: subtitle.isEmpty
+              ? null
+              : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 2),
-                    if (t.days > 0)
-                      Text(
-                        t.days == 1 ? '1 day' : '${t.days} days',
-                        style: detailStyle.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    if (details.isNotEmpty)
-                      Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
-                  ],
-                )
-              : details.isEmpty
-                  ? null
-                  : Text(details, maxLines: 2, overflow: TextOverflow.ellipsis, style: detailStyle),
+                  children: subtitle,
+                ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -370,7 +394,10 @@ class _EntryTile extends StatelessWidget {
                 ),
               ),
               if (isForeign)
-                Text('$sign${t.amount.toStringAsFixed(2)} ${t.currency}', style: detailStyle),
+                Text(
+                  '$sign${t.amount.toStringAsFixed(2)} ${t.currency}',
+                  style: detailStyle,
+                ),
             ],
           ),
         ),

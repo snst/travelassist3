@@ -14,7 +14,7 @@ import 'hotel_page.dart';
 import 'note_item_page.dart';
 import 'note_list_page.dart';
 import 'todo_list_page.dart';
-import 'transaction_list_page.dart';
+import 'expenses_list_page.dart';
 import 'withdrawal_page.dart';
 
 const _settingsMenuItem = 'settings';
@@ -82,13 +82,13 @@ final _groups = <_FeatureGroup>[
     _Feature(
       'Expenses',
       Icons.receipt_long,
-      (db) => TransactionListPage(database: db),
+      (db) => ExpensesListPage(database: db),
     ),
     _Feature('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
     _Feature(
       'Hotels',
       Icons.calendar_month,
-      (db) => HotelCalendarPage(database: db),
+      (db) => CalendarPage(database: db),
     ),
     _Feature('Checklist', Icons.checklist, (db) => TodoListPage(database: db)),
     _Feature('Notes', Icons.note_alt, (db) => NoteListPage(database: db)),

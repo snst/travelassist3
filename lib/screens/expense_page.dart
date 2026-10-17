@@ -125,10 +125,14 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     super.didChangeDependencies();
     if (widget.existing == null && !_gpsLocationCaptureStarted) {
       _gpsLocationCaptureStarted = true;
-      _gpsLocationCapture = LinkEditor.attachCurrentGpsLocation(
-        context,
-        _links,
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _gpsLocationCapture = LinkEditor.attachCurrentGpsLocation(
+            context,
+            _links,
+          );
+        }
+      });
     }
   }
 

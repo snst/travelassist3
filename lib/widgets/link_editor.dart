@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+
 import '../screens/note_actions.dart';
 
 enum _LinkItemAction { copy, remove }
@@ -22,10 +24,8 @@ class LinkListController extends ChangeNotifier {
   bool get hasLinks => _fields.any((c) => c.text.trim().isNotEmpty);
 
   /// The non-empty links, tab separated, as stored on a note.
-  String get joined => _fields
-      .map((c) => c.text.trim())
-      .where((t) => t.isNotEmpty)
-      .join('\t');
+  String get joined =>
+      _fields.map((c) => c.text.trim()).where((t) => t.isNotEmpty).join('\t');
 
   void add([String text = '']) {
     _fields.add(TextEditingController(text: text));
@@ -139,6 +139,13 @@ class LinkEditor extends StatelessWidget {
           duration: duration ?? const Duration(seconds: 4),
         ),
       );
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.linux) {
+      const location = 'geo:0,0';
+      controller.addAll([location]);
+      say('Added simulated GPS location for Linux desktop (0, 0).');
+      return;
     }
 
     if (!await Geolocator.isLocationServiceEnabled()) {

@@ -34,10 +34,10 @@ class _Booking {
 /// Lists hotel bookings on a vertical calendar: one row per day, one column per
 /// parallel booking. A booking covers [MoneyTransaction.date] for
 /// [MoneyTransaction.days] days; overlapping bookings are highlighted.
-class HotelCalendarPage extends StatelessWidget {
+class CalendarPage extends StatelessWidget {
   final AppDatabase database;
 
-  const HotelCalendarPage({super.key, required this.database});
+  const CalendarPage({super.key, required this.database});
 
   @override
   Widget build(BuildContext context) {
