@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../database/database.dart';
@@ -18,6 +21,7 @@ import 'expenses_list_page.dart';
 import 'withdrawal_page.dart';
 
 const _settingsMenuItem = 'settings';
+const _databaseContentMenuItem = 'database-content';
 
 class _Feature {
   final String label;
@@ -130,15 +134,6 @@ class HomePage extends StatelessWidget {
               value: darkModeEnabled,
               onChanged: (enabled) => Navigator.of(context).pop(enabled),
             ),
-            const Divider(),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: () => _showDatabaseContent(context),
-                icon: const Icon(Icons.storage_outlined),
-                label: const Text('Manage database content'),
-              ),
-            ),
           ],
         ),
         actions: [
@@ -173,6 +168,8 @@ class HomePage extends StatelessWidget {
                 _DatabaseContentRow(
                   content: content,
                   onDelete: () => _confirmDeleteContent(dialogContext, content),
+                  onImport: () => _importContent(dialogContext, content),
+                  onExport: () => _exportContent(dialogContext, content),
                 ),
             ],
           ),
@@ -231,6 +228,99 @@ class HomePage extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text('${content.label} deleted')));
   }
 
+  Future<void> _importContent(
+    BuildContext context,
+    DatabaseContent content,
+  ) async {
+    try {
+      final file = await FilePicker.pickFile(
+        dialogTitle: 'Import ${content.label}',
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+      );
+      if (file == null || !context.mounted) return;
+
+      final json = utf8.decode(await file.readAsBytes());
+      if (!context.mounted) return;
+      final existingCount = await database.countContent(content);
+      var deleteExisting = false;
+      if (existingCount > 0) {
+        if (!context.mounted) return;
+        final choice = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text('Import ${content.label}?'),
+            content: Text(
+              'There are already $existingCount ${content.label.toLowerCase()}. '
+              'Delete the existing items before importing?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel import'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Keep existing'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Delete and import'),
+              ),
+            ],
+          ),
+        );
+        if (choice == null) return;
+        deleteExisting = choice;
+      }
+
+      await database.importContentFromJson(
+        content,
+        json,
+        deleteExisting: deleteExisting,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('${content.label} imported')));
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not import ${content.label}: $error')),
+      );
+    }
+  }
+
+  Future<void> _exportContent(
+    BuildContext context,
+    DatabaseContent content,
+  ) async {
+    try {
+      final now = DateTime.now();
+      final date =
+          '${now.year.toString().padLeft(4, '0')}'
+          '${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}';
+      final time =
+          '${now.hour.toString().padLeft(2, '0')}'
+          '${now.minute.toString().padLeft(2, '0')}';
+      final json = await database.exportContentAsJson(content);
+      final savedFile = await FilePicker.saveFile(
+        dialogTitle: 'Export ${content.label}',
+        fileName: '${content.name}_${date}_$time.json',
+        bytes: Uint8List.fromList(utf8.encode(json)),
+        mimeType: 'application/json',
+      );
+      if (savedFile == null || !context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('${content.label} exported')));
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not export ${content.label}: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -276,6 +366,8 @@ class HomePage extends StatelessWidget {
                 );
               } else if (item == _settingsMenuItem) {
                 _showSettings(context);
+              } else if (item == _databaseContentMenuItem) {
+                _showDatabaseContent(context);
               }
             },
             itemBuilder: (context) => [
@@ -298,6 +390,16 @@ class HomePage extends StatelessWidget {
                     Icon(Icons.settings_outlined, size: 20),
                     SizedBox(width: 12),
                     Text('Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<Object>(
+                value: _databaseContentMenuItem,
+                child: Row(
+                  children: [
+                    Icon(Icons.storage_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Flexible(child: Text('Manage database content')),
                   ],
                 ),
               ),
@@ -336,8 +438,15 @@ class HomePage extends StatelessWidget {
 class _DatabaseContentRow extends StatelessWidget {
   final DatabaseContent content;
   final VoidCallback onDelete;
+  final VoidCallback onImport;
+  final VoidCallback onExport;
 
-  const _DatabaseContentRow({required this.content, required this.onDelete});
+  const _DatabaseContentRow({
+    required this.content,
+    required this.onDelete,
+    required this.onImport,
+    required this.onExport,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -350,13 +459,13 @@ class _DatabaseContentRow extends StatelessWidget {
           icon: const Icon(Icons.delete_outline),
         ),
         IconButton(
-          tooltip: 'Import ${content.label} (coming soon)',
-          onPressed: null,
+          tooltip: 'Import ${content.label}',
+          onPressed: onImport,
           icon: const Icon(Icons.file_upload_outlined),
         ),
         IconButton(
-          tooltip: 'Export ${content.label} (coming soon)',
-          onPressed: null,
+          tooltip: 'Export ${content.label}',
+          onPressed: onExport,
           icon: const Icon(Icons.file_download_outlined),
         ),
       ],

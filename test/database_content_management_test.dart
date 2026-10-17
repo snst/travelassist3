@@ -25,10 +25,10 @@ void main() {
     );
     await tester.tap(find.byTooltip('Cash tools'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     await tester.tap(find.text('Manage database content'));
     await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   }
 
   testWidgets('database content deletion requires confirmation and is scoped', (
@@ -60,8 +60,8 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.byTooltip('Import $label (coming soon)'), findsOneWidget);
-      expect(find.byTooltip('Export $label (coming soon)'), findsOneWidget);
+      expect(find.byTooltip('Import $label'), findsOneWidget);
+      expect(find.byTooltip('Export $label'), findsOneWidget);
     }
 
     await tester.tap(find.byTooltip('Delete Notes'));
@@ -104,5 +104,119 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
 
     expect(await database.select(database.notes).get(), hasLength(1));
+  });
+
+  test('database content JSON round-trips every content category', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    final transactionDate = DateTime(2025, 3, 14, 9, 26);
+    await database.addCurrency(
+      name: 'Euro',
+      shortName: 'EUR',
+      rate: 1,
+      isHome: true,
+    );
+    await database.addTodoItem(
+      name: 'Passport',
+      category: 'Documents',
+      comment: 'Check expiry',
+      quantity: 2,
+      used: 1,
+      state: 2,
+    );
+    await database.addNote(
+      comment: 'Travel note',
+      link: 'https://example.com',
+      tags: const ['trip', 'important'],
+    );
+    await database.addTransaction(
+      kind: TransactionKind.expense,
+      amount: 12.5,
+      currency: 'EUR',
+      method: 'Card',
+      comment: 'Lunch',
+      tags: const ['food'],
+      date: transactionDate,
+      days: 2,
+      state: TransactionState.booked,
+      link: 'https://example.com/receipt',
+      showInCalendar: true,
+    );
+
+    final exports = <DatabaseContent, String>{
+      for (final content in DatabaseContent.values)
+        content: await database.exportContentAsJson(content),
+    };
+    for (final content in DatabaseContent.values) {
+      await database.clearContent(content);
+    }
+    for (final content in DatabaseContent.values) {
+      await database.importContentFromJson(
+        content,
+        exports[content]!,
+        deleteExisting: true,
+      );
+    }
+
+    final currencies = await database.select(database.currencies).get();
+    expect(currencies.single.name, 'Euro');
+    expect(currencies.single.isHome, isTrue);
+
+    final todoItems = await database.select(database.todoItems).get();
+    expect(todoItems.single.name, 'Passport');
+    expect(todoItems.single.quantity, 2);
+    expect(todoItems.single.state, 2);
+
+    final notes = await database.select(database.notes).get();
+    expect(notes.single.comment, 'Travel note');
+    expect(notes.single.tags, 'trip,important');
+
+    final transactions = await database
+        .select(database.moneyTransactions)
+        .get();
+    expect(transactions.single.amount, 12.5);
+    expect(transactions.single.date, transactionDate);
+    expect(transactions.single.showInCalendar, isTrue);
+    expect(transactions.single.state, TransactionState.booked.index);
+  });
+
+  test(
+    'appending JSON preserves existing rows and assigns fresh IDs',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.addNote(comment: 'Existing note');
+      final exportedNote = await database.exportContentAsJson(
+        DatabaseContent.notes,
+      );
+
+      await database.importContentFromJson(
+        DatabaseContent.notes,
+        exportedNote,
+        deleteExisting: false,
+      );
+
+      final notes = await database.select(database.notes).get();
+      expect(notes.map((note) => note.comment), everyElement('Existing note'));
+      expect(notes.map((note) => note.id).toSet(), hasLength(2));
+    },
+  );
+
+  test('invalid JSON does not delete existing records', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Keep this note');
+
+    await expectLater(
+      database.importContentFromJson(
+        DatabaseContent.notes,
+        '{"formatVersion":1,"content":"currencies","records":[]}',
+        deleteExisting: true,
+      ),
+      throwsFormatException,
+    );
+
+    final notes = await database.select(database.notes).get();
+    expect(notes.single.comment, 'Keep this note');
   });
 }

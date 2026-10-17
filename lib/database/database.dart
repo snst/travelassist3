@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -18,7 +20,9 @@ class TodoItems extends Table {
   TextColumn get comment => text().withDefault(const Constant(''))();
   IntColumn get quantity => integer().withDefault(const Constant(1))();
   IntColumn get used => integer().withDefault(const Constant(0))();
-  IntColumn get state => integer().withDefault(const Constant(0))(); // 0: open, 1: skipped, 2: done
+  IntColumn get state => integer().withDefault(
+    const Constant(0),
+  )(); // 0: open, 1: skipped, 2: done
 }
 
 class Notes extends Table {
@@ -32,18 +36,24 @@ class Notes extends Table {
 @DataClassName('MoneyTransaction')
 class MoneyTransactions extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get kind => integer().withDefault(const Constant(0))(); // TransactionKind.index
+  IntColumn get kind =>
+      integer().withDefault(const Constant(0))(); // TransactionKind.index
   RealColumn get amount => real()();
   TextColumn get currency => text()(); // Currency.shortName
-  TextColumn get method => text().withDefault(const Constant(''))(); // empty or 'Cash' means cash
+  TextColumn get method =>
+      text().withDefault(const Constant(''))(); // empty or 'Cash' means cash
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   // Number of days the entry covers: for expenses the days it counts in the daily average
   // (0 = not included, 1 = default), for e.g. a hotel booking its length.
   IntColumn get days => integer().withDefault(const Constant(1))();
-  IntColumn get state => integer().withDefault(const Constant(2))(); // TransactionState.index, default paid
-  TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
+  IntColumn get state => integer().withDefault(
+    const Constant(2),
+  )(); // TransactionState.index, default paid
+  TextColumn get link => text().withDefault(
+    const Constant(''),
+  )(); // tab separated, like Notes.link
   BoolColumn get showInCalendar =>
       boolean().withDefault(const Constant(false))();
 }
@@ -79,20 +89,18 @@ class AppDatabase extends _$AppDatabase {
 
   // --- Currency Operations ---
   Stream<List<Currency>> watchAllCurrencies() {
-    return (select(currencies)
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.isHome, mode: OrderingMode.desc),
-            (t) => OrderingTerm(expression: t.shortName, mode: OrderingMode.asc),
-          ]))
+    return (select(currencies)..orderBy([
+          (t) => OrderingTerm(expression: t.isHome, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.shortName, mode: OrderingMode.asc),
+        ]))
         .watch();
   }
 
   Future<List<Currency>> getAllCurrencies() {
-    return (select(currencies)
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.isHome, mode: OrderingMode.desc),
-            (t) => OrderingTerm(expression: t.shortName, mode: OrderingMode.asc),
-          ]))
+    return (select(currencies)..orderBy([
+          (t) => OrderingTerm(expression: t.isHome, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.shortName, mode: OrderingMode.asc),
+        ]))
         .get();
   }
 
@@ -103,8 +111,9 @@ class AppDatabase extends _$AppDatabase {
     bool isHome = false,
   }) async {
     if (isHome) {
-      await (update(currencies)..where((t) => t.isHome.equals(true)))
-          .write(const CurrenciesCompanion(isHome: Value(false)));
+      await (update(currencies)..where((t) => t.isHome.equals(true))).write(
+        const CurrenciesCompanion(isHome: Value(false)),
+      );
     }
     return into(currencies).insert(
       CurrenciesCompanion.insert(
@@ -126,9 +135,8 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setHomeCurrency(int id) async {
     await transaction(() async {
-      await update(currencies).write(
-        const CurrenciesCompanion(isHome: Value(false)),
-      );
+      await update(currencies)
+          .write(const CurrenciesCompanion(isHome: Value(false)));
       await (update(currencies)..where((t) => t.id.equals(id))).write(
         const CurrenciesCompanion(isHome: Value(true)),
       );
@@ -138,12 +146,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> seedInitialCurrenciesIfEmpty() async {
     final count = await select(currencies).get();
     if (count.isEmpty) {
-      await addCurrency(
-        name: 'Euro',
-        shortName: '€',
-        rate: 1.0,
-        isHome: true,
-      );
+      await addCurrency(name: 'Euro', shortName: '€', rate: 1.0, isHome: true);
       await addCurrency(
         name: 'US Dollar',
         shortName: r'$',
@@ -165,11 +168,10 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Stream<List<TodoItem>> watchAllTodoItems() {
-    return (select(todoItems)
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.category, mode: OrderingMode.asc),
-            (t) => OrderingTerm(expression: t.name, mode: OrderingMode.asc),
-          ]))
+    return (select(todoItems)..orderBy([
+          (t) => OrderingTerm(expression: t.category, mode: OrderingMode.asc),
+          (t) => OrderingTerm(expression: t.name, mode: OrderingMode.asc),
+        ]))
         .watch();
   }
 
@@ -217,16 +219,16 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> setTodoItemState(int id, int state) {
-    return (update(todoItems)..where((t) => t.id.equals(id)))
-        .write(TodoItemsCompanion(state: Value(state)));
+    return (update(todoItems)..where((t) => t.id.equals(id))).write(
+      TodoItemsCompanion(state: Value(state)),
+    );
   }
 
   // --- Note Operations ---
   Stream<List<Note>> watchAllNotes() {
-    return (select(notes)
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ]))
+    return (select(notes)..orderBy([
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ]))
         .watch();
   }
 
@@ -234,7 +236,10 @@ class AppDatabase extends _$AppDatabase {
     final allNotes = await select(notes).get();
     final tagSet = <String>{};
     for (final note in allNotes) {
-      final tags = note.tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
+      final tags = note.tags
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty);
       tagSet.addAll(tags);
     }
     final sorted = tagSet.toList()..sort();
@@ -246,7 +251,10 @@ class AppDatabase extends _$AppDatabase {
     String link = '',
     List<String> tags = const [],
   }) {
-    final tagString = tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',');
+    final tagString = tags
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .join(',');
     return into(notes).insert(
       NotesCompanion.insert(
         comment: Value(comment),
@@ -270,11 +278,10 @@ class AppDatabase extends _$AppDatabase {
 
   // --- Money Transaction Operations ---
   Stream<List<MoneyTransaction>> watchAllTransactions() {
-    return (select(moneyTransactions)
-          ..orderBy([
-            (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
-            (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
-          ]))
+    return (select(moneyTransactions)..orderBy([
+          (t) => OrderingTerm(expression: t.date, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+        ]))
         .watch();
   }
 
@@ -298,7 +305,9 @@ class AppDatabase extends _$AppDatabase {
         currency: currency,
         method: Value(method.trim()),
         comment: Value(comment),
-        tags: Value(tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(',')),
+        tags: Value(
+          tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(','),
+        ),
         date: Value(date ?? DateTime.now()),
         days: Value(days),
         state: Value(state.index),
@@ -318,21 +327,214 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> clearContent(DatabaseContent content) async {
     await transaction(() async {
-      switch (content) {
-        case DatabaseContent.currencies:
-          await delete(currencies).go();
-        case DatabaseContent.checklist:
-          await delete(todoItems).go();
-        case DatabaseContent.notes:
-          await delete(notes).go();
-        case DatabaseContent.transactions:
-          await delete(moneyTransactions).go();
-      }
+      await _deleteContent(content);
     });
+  }
+
+  Future<int> countContent(DatabaseContent content) async {
+    return switch (content) {
+      DatabaseContent.currencies => (await select(currencies).get()).length,
+      DatabaseContent.checklist => (await select(todoItems).get()).length,
+      DatabaseContent.notes => (await select(notes).get()).length,
+      DatabaseContent.transactions => (await select(
+        moneyTransactions,
+      ).get()).length,
+    };
+  }
+
+  Future<String> exportContentAsJson(DatabaseContent content) async {
+    final records = switch (content) {
+      DatabaseContent.currencies => (await select(
+        currencies,
+      ).get()).map((row) => row.toJson()).toList(),
+      DatabaseContent.checklist => (await select(
+        todoItems,
+      ).get()).map((row) => row.toJson()).toList(),
+      DatabaseContent.notes => (await select(
+        notes,
+      ).get()).map((row) => row.toJson()).toList(),
+      DatabaseContent.transactions => (await select(
+        moneyTransactions,
+      ).get()).map((row) => row.toJson()).toList(),
+    };
+    return const JsonEncoder.withIndent('  ').convert({
+      'formatVersion': 1,
+      'content': content.name,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'records': records,
+    });
+  }
+
+  Future<void> importContentFromJson(
+    DatabaseContent content,
+    String json, {
+    required bool deleteExisting,
+  }) async {
+    final decoded = jsonDecode(json);
+    if (decoded is! Map<String, dynamic> ||
+        decoded['formatVersion'] != 1 ||
+        decoded['content'] != content.name ||
+        decoded['records'] is! List) {
+      throw FormatException('The file is not a valid ${content.label} export.');
+    }
+
+    switch (content) {
+      case DatabaseContent.currencies:
+        final rows = _parseRecords(
+          decoded['records'],
+          Currency.fromJson,
+          content,
+        );
+        await transaction(() async {
+          final preserveIds = await _prepareImport(content, deleteExisting);
+          var hasHomeCurrency = (await select(
+            currencies,
+          ).get()).any((currency) => currency.isHome);
+          for (final row in rows) {
+            final isHome = row.isHome && !hasHomeCurrency;
+            if (isHome) hasHomeCurrency = true;
+            final currency = row.copyWith(isHome: isHome);
+            await into(currencies).insert(
+              preserveIds
+                  ? currency.toCompanion(false)
+                  : CurrenciesCompanion.insert(
+                      name: currency.name,
+                      shortName: currency.shortName,
+                      rate: currency.rate,
+                      isHome: Value(currency.isHome),
+                    ),
+            );
+          }
+        });
+      case DatabaseContent.checklist:
+        final rows = _parseRecords(
+          decoded['records'],
+          TodoItem.fromJson,
+          content,
+        );
+        await transaction(() async {
+          final preserveIds = await _prepareImport(content, deleteExisting);
+          for (final row in rows) {
+            await into(todoItems).insert(
+              preserveIds
+                  ? row.toCompanion(false)
+                  : TodoItemsCompanion.insert(
+                      name: row.name,
+                      category: Value(row.category),
+                      comment: Value(row.comment),
+                      quantity: Value(row.quantity),
+                      used: Value(row.used),
+                      state: Value(row.state),
+                    ),
+            );
+          }
+        });
+      case DatabaseContent.notes:
+        final rows = _parseRecords(decoded['records'], Note.fromJson, content);
+        await transaction(() async {
+          final preserveIds = await _prepareImport(content, deleteExisting);
+          for (final row in rows) {
+            await into(notes).insert(
+              preserveIds
+                  ? row.toCompanion(false)
+                  : NotesCompanion.insert(
+                      comment: Value(row.comment),
+                      link: Value(row.link),
+                      tags: Value(row.tags),
+                      createdAt: Value(row.createdAt),
+                    ),
+            );
+          }
+        });
+      case DatabaseContent.transactions:
+        final rows = _parseRecords(
+          decoded['records'],
+          MoneyTransaction.fromJson,
+          content,
+        );
+        await transaction(() async {
+          final preserveIds = await _prepareImport(content, deleteExisting);
+          for (final row in rows) {
+            await into(moneyTransactions).insert(
+              preserveIds
+                  ? row.toCompanion(false)
+                  : MoneyTransactionsCompanion.insert(
+                      kind: Value(row.kind),
+                      amount: row.amount,
+                      currency: row.currency,
+                      method: Value(row.method),
+                      comment: Value(row.comment),
+                      tags: Value(row.tags),
+                      date: Value(row.date),
+                      days: Value(row.days),
+                      state: Value(row.state),
+                      link: Value(row.link),
+                      showInCalendar: Value(row.showInCalendar),
+                    ),
+            );
+          }
+        });
+    }
+  }
+
+  Future<bool> _prepareImport(
+    DatabaseContent content,
+    bool deleteExisting,
+  ) async {
+    final hadExisting = await countContent(content) > 0;
+    if (deleteExisting) await _deleteContent(content);
+    return deleteExisting || !hadExisting;
+  }
+
+  Future<void> _deleteContent(DatabaseContent content) async {
+    switch (content) {
+      case DatabaseContent.currencies:
+        await delete(currencies).go();
+      case DatabaseContent.checklist:
+        await delete(todoItems).go();
+      case DatabaseContent.notes:
+        await delete(notes).go();
+      case DatabaseContent.transactions:
+        await delete(moneyTransactions).go();
+    }
   }
 
   Future<int> restoreTransaction(MoneyTransaction transaction) {
     return into(moneyTransactions).insert(transaction);
+  }
+}
+
+List<T> _parseRecords<T>(
+  Object? rawRecords,
+  T Function(Map<String, dynamic>) parse,
+  DatabaseContent content,
+) {
+  final records = rawRecords as List<dynamic>;
+  return [
+    for (var index = 0; index < records.length; index++)
+      _parseRecord(records[index], parse, content, index),
+  ];
+}
+
+T _parseRecord<T>(
+  Object? rawRecord,
+  T Function(Map<String, dynamic>) parse,
+  DatabaseContent content,
+  int index,
+) {
+  if (rawRecord is! Map<String, dynamic>) {
+    throw FormatException(
+      'Record ${index + 1} in the ${content.label} file is invalid.',
+    );
+  }
+  try {
+    return parse(rawRecord);
+  } on FormatException {
+    rethrow;
+  } on TypeError {
+    throw FormatException(
+      'Record ${index + 1} in the ${content.label} file is invalid.',
+    );
   }
 }
 
@@ -362,8 +564,8 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   TransactionState get transactionState =>
       state >= 0 && state < TransactionState.values.length
-          ? TransactionState.values[state]
-          : TransactionState.paid;
+      ? TransactionState.values[state]
+      : TransactionState.paid;
 
   bool get isPlanned => transactionState == TransactionState.planned;
   bool get isBooked => transactionState == TransactionState.booked;
@@ -383,35 +585,25 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   bool get isCash => method.trim().isEmpty || method == cashMethod;
 
-  List<String> get tagList => tags
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> get tagList =>
+      tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-  List<String> get linkList => link
-      .split('\t')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> get linkList =>
+      link.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 }
 
 extension NoteHelpers on Note {
-  List<String> get tagList => tags
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> get tagList =>
+      tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-  List<String> get linkList => link
-      .split('\t')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  List<String> get linkList =>
+      link.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-  bool get isLink => linkList.any((l) =>
-      l.toLowerCase().startsWith('http://') ||
-      l.toLowerCase().startsWith('https://'));
+  bool get isLink => linkList.any(
+    (l) =>
+        l.toLowerCase().startsWith('http://') ||
+        l.toLowerCase().startsWith('https://'),
+  );
 
   bool get isGeo => linkList.any((l) => l.toLowerCase().startsWith('geo:'));
 
