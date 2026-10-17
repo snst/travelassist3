@@ -49,86 +49,90 @@ class _TagEditorState extends State<TagEditor> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              for (final tag in widget.tags)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Chip(
-                    label: Text(tag),
-                    onDeleted: () => widget.onTagRemoved(tag),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Autocomplete<String>(
-                initialValue: TextEditingValue(text: widget.initialInput),
-                optionsBuilder: (textValue) {
-                  if (textValue.text.isEmpty) {
-                    return widget.availableTags
-                        .where((tag) => !widget.tags.contains(tag));
-                  }
-                  return widget.availableTags.where(
-                    (tag) =>
-                        !widget.tags.contains(tag) &&
-                        tag.toLowerCase().contains(
-                              textValue.text.toLowerCase(),
-                            ),
-                  );
-                },
-                onSelected: _addTag,
-                fieldViewBuilder:
-                    (context, controller, focusNode, onEditingComplete) {
-                  _inputController = controller;
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      labelText: widget.labelText,
-                      hintText: widget.hintText,
-                      isDense: true,
-                      border: const OutlineInputBorder(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final tag in widget.tags)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Chip(
+                      label: Text(tag),
+                      onDeleted: () => widget.onTagRemoved(tag),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    onChanged: widget.onInputChanged,
-                    onTap: () {
-                      if (controller.text.isEmpty && focusNode.hasFocus) {
-                        _refreshOptions(controller);
-                      }
-                    },
-                    onSubmitted: _addTag,
-                  );
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Autocomplete<String>(
+                  initialValue: TextEditingValue(text: widget.initialInput),
+                  optionsBuilder: (textValue) {
+                    if (textValue.text.isEmpty) {
+                      return widget.availableTags.where(
+                        (tag) => !widget.tags.contains(tag),
+                      );
+                    }
+                    return widget.availableTags.where(
+                      (tag) =>
+                          !widget.tags.contains(tag) &&
+                          tag.toLowerCase().contains(
+                            textValue.text.toLowerCase(),
+                          ),
+                    );
+                  },
+                  onSelected: _addTag,
+                  fieldViewBuilder:
+                      (context, controller, focusNode, onEditingComplete) {
+                        _inputController = controller;
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: widget.labelText,
+                            hintText: widget.hintText,
+                            isDense: true,
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: widget.onInputChanged,
+                          onTap: () {
+                            if (controller.text.isEmpty && focusNode.hasFocus) {
+                              _refreshOptions(controller);
+                            }
+                          },
+                          onSubmitted: _addTag,
+                        );
+                      },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Add star tag',
+                icon: const Icon(Icons.star),
+                onPressed: () => _addTag('⭐'),
+              ),
+              const SizedBox(width: 4),
+              IconButton.filled(
+                icon: const Icon(Icons.add),
+                onPressed: () {
+                  final controller = _inputController;
+                  if (controller != null) {
+                    _addTag(controller.text);
+                  }
                 },
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filledTonal(
-              tooltip: 'Add star tag',
-              icon: const Icon(Icons.star),
-              onPressed: () => _addTag('⭐'),
-            ),
-            const SizedBox(width: 4),
-            IconButton.filled(
-              icon: const Icon(Icons.add),
-              onPressed: () {
-                final controller = _inputController;
-                if (controller != null) {
-                  _addTag(controller.text);
-                }
-              },
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

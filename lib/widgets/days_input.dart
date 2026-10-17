@@ -13,7 +13,6 @@ class DaysInput extends StatelessWidget {
   });
 
   String get _summary => switch (days) {
-        0 => 'Not counted',
         1 => '1 day',
         _ => '$days days',
       };
@@ -23,14 +22,14 @@ class DaysInput extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Days', style: Theme.of(context).textTheme.bodyLarge),
+        //Text('Days', style: Theme.of(context).textTheme.bodyLarge),
         Row(
           children: [
             IconButton(
               icon: const Icon(Icons.remove_circle_outline),
               tooltip: 'Fewer days',
               visualDensity: VisualDensity.compact,
-              onPressed: days > 0 ? () => onChanged(days - 1) : null,
+              onPressed: days > 1 ? () => onChanged(days - 1) : null,
             ),
             Expanded(
               child: Text(

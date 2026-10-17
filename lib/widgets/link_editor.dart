@@ -176,120 +176,124 @@ class LinkEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        final fields = controller.fields;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (fields.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          final fields = controller.fields;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (fields.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Text(
-                    'No links added yet.',
-                    style: TextStyle(color: Colors.grey),
+                  child: const Center(
+                    child: Text(
+                      'No links added yet.',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: fields.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final field = fields[index];
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: field,
-                          decoration: InputDecoration(
-                            labelText: 'Link ${index + 1}',
-                            hintText: 'https://... or geo:lat,lng',
-                            border: const OutlineInputBorder(),
-                            isDense: true,
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: fields.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final field = fields[index];
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: field,
+                            decoration: InputDecoration(
+                              labelText: 'Link ${index + 1}',
+                              hintText: 'https://... or geo:lat,lng',
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Open Link',
-                        icon: const Icon(Icons.open_in_new),
-                        onPressed: () => openNoteLink(context, field.text),
-                      ),
-                      PopupMenuButton<_LinkItemAction>(
-                        tooltip: 'Actions for Link ${index + 1}',
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (action) async {
-                          switch (action) {
-                            case _LinkItemAction.copy:
-                              copyNoteText(context, field.text, 'Link');
-                            case _LinkItemAction.remove:
-                              await _confirmRemove(context, index);
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: _LinkItemAction.copy,
-                            child: Row(
-                              children: [
-                                Icon(Icons.copy),
-                                SizedBox(width: 12),
-                                Text('Copy Link'),
-                              ],
+                        IconButton(
+                          tooltip: 'Open Link',
+                          icon: const Icon(Icons.open_in_new),
+                          onPressed: () => openNoteLink(context, field.text),
+                        ),
+                        PopupMenuButton<_LinkItemAction>(
+                          tooltip: 'Actions for Link ${index + 1}',
+                          icon: const Icon(Icons.more_vert),
+                          onSelected: (action) async {
+                            switch (action) {
+                              case _LinkItemAction.copy:
+                                copyNoteText(context, field.text, 'Link');
+                              case _LinkItemAction.remove:
+                                await _confirmRemove(context, index);
+                            }
+                          },
+                          itemBuilder: (context) => const [
+                            PopupMenuItem(
+                              value: _LinkItemAction.copy,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.copy),
+                                  SizedBox(width: 12),
+                                  Text('Copy Link'),
+                                ],
+                              ),
                             ),
-                          ),
-                          PopupMenuItem(
-                            value: _LinkItemAction.remove,
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: Colors.red),
-                                SizedBox(width: 12),
-                                Text('Remove Link'),
-                              ],
+                            PopupMenuItem(
+                              value: _LinkItemAction.remove,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline, color: Colors.red),
+                                  SizedBox(width: 12),
+                                  Text('Remove Link'),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _pasteFromClipboard(context),
+                    icon: const Icon(Icons.assignment_turned_in_outlined),
+                    label: const Text('Paste'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: controller.add,
+                    icon: const Icon(Icons.add_link),
+                    label: const Text('New'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        attachCurrentGpsLocation(context, controller),
+                    icon: const Icon(Icons.my_location),
+                    label: const Text('GPS'),
+                  ),
+                ],
               ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _pasteFromClipboard(context),
-                  icon: const Icon(Icons.assignment_turned_in_outlined),
-                  label: const Text('Paste'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: controller.add,
-                  icon: const Icon(Icons.add_link),
-                  label: const Text('New'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () =>
-                      attachCurrentGpsLocation(context, controller),
-                  icon: const Icon(Icons.my_location),
-                  label: const Text('GPS'),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

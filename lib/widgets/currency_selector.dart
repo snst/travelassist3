@@ -14,26 +14,52 @@ class CurrencySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      alignment: WrapAlignment.end,
-      children: [
-        for (final code in codes)
-          ChoiceChip(
-            label: Text(code),
-            selected: selectedCode == code,
-            showCheckmark: false,
-            selectedColor: Theme.of(context).colorScheme.primary,
-            labelStyle: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: selectedCode == code
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : null,
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: Alignment.centerRight,
+      heightFactor: 1,
+      child: PopupMenuButton<String>(
+        tooltip: 'Select currency',
+        enabled: onSelected != null && codes.isNotEmpty,
+        onSelected: onSelected,
+        padding: EdgeInsets.zero,
+        itemBuilder: (context) => [
+          for (final code in codes)
+            PopupMenuItem<String>(
+              value: code,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(code),
+                  if (selectedCode == code) ...[
+                    const SizedBox(width: 12),
+                    const Icon(Icons.check, size: 18),
+                  ],
+                ],
+              ),
             ),
-            onSelected: onSelected == null ? null : (_) => onSelected!(code),
+        ],
+        child: Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 50),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border.all(color: colorScheme.outline),
+            borderRadius: BorderRadius.circular(8),
           ),
-      ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                selectedCode,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

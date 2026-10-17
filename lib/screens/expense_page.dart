@@ -7,12 +7,11 @@ import '../utils/payment_methods.dart';
 import '../utils/transaction_kind.dart';
 import '../widgets/add_payment_method_dialog.dart';
 import '../widgets/comment_input.dart';
-import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/expense_options.dart';
 import '../widgets/link_editor.dart';
-import '../widgets/payment_method_selector.dart';
+import '../widgets/payment_currency_amount_input.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
@@ -91,6 +90,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   late DateTime _date;
   late int _averageDays;
   late TransactionState _state;
+  late bool _showInCalendar;
   Future<void>? _gpsLocationCapture;
   bool _gpsLocationCaptureStarted = false;
 
@@ -117,6 +117,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _date = t?.date ?? DateTime.now();
     _averageDays = t?.days ?? 1;
     _state = t?.transactionState ?? TransactionState.paid;
+    _showInCalendar = t?.showInCalendar ?? false;
     if (t == null) _methodController.text = _methods.first;
   }
 
@@ -184,6 +185,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         days: _averageDays,
         state: _state,
         link: _links.joined,
+        showInCalendar: _showInCalendar,
       );
     } else {
       await widget.database.updateTransactionEntry(
@@ -197,6 +199,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           days: _averageDays,
           state: _state.index,
           link: _links.joined,
+          showInCalendar: _showInCalendar,
         ),
       );
     }
@@ -220,7 +223,12 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           16 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          CurrencyAmountInput(
+          PaymentCurrencyAmountInput(
+            methods: _methods,
+            selectedMethod: _methodController.text,
+            onMethodSelected: (method) =>
+                setState(() => _methodController.text = method),
+            onAddMethod: _addMethod,
             currencyCodes: codes,
             selectedCurrencyCode: _currencyCode,
             onCurrencySelected: (code) => setState(() => _currencyCode = code),
@@ -228,28 +236,15 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             autofocus: widget.existing == null,
             onAmountChanged: null,
           ),
-          const SizedBox(height: 20),
-          PaymentMethodSelector(
-            methods: _methods,
-            selectedMethod: _methodController.text,
-            onSelected: (method) =>
-                setState(() => _methodController.text = method),
-            onAddMethod: _addMethod,
-          ),
-          const SizedBox(height: 20),
           TagEditor(
             tags: _tags,
             availableTags: knownTags,
             initialInput: _tagDraft,
-            labelText: 'Add tag',
-            hintText: 'e.g. food, taxi, hotel',
             onInputChanged: (value) => _tagDraft = value,
             onTagAdded: _addTag,
             onTagRemoved: (tag) => setState(() => _tags.remove(tag)),
           ),
-          const SizedBox(height: 20),
           CommentInput(controller: _commentController),
-          const SizedBox(height: 20),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
@@ -257,12 +252,12 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           ExpenseOptions(
             state: _state,
             averageDays: _averageDays,
+            inCalendar: _showInCalendar,
             onStateChanged: (v) => setState(() => _state = v),
             onAverageDaysChanged: (v) => setState(() => _averageDays = v),
+            onCalendarChanged: (v) => setState(() => _showInCalendar = v),
           ),
-          const SizedBox(height: 16),
           LinkEditor(controller: _links),
-          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),

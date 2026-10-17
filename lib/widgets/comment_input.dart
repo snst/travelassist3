@@ -13,7 +13,7 @@ class CommentInput extends StatelessWidget {
   const CommentInput({
     super.key,
     required this.controller,
-    this.maxLines = 2,
+    this.maxLines = 3,
     this.autofocus = false,
     this.labelText = 'Info',
     this.hintText,
@@ -30,37 +30,40 @@ class CommentInput extends StatelessWidget {
       );
     }
 
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      autofocus: autofocus,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: labelText,
-        hintText: hintText,
-        border: const OutlineInputBorder(),
-        alignLabelWithHint: true,
-        suffixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.content_copy),
-              tooltip: 'Copy info',
-              onPressed: copyText,
-            ),
-            IconButton(
-              icon: const Icon(Icons.open_in_full),
-              tooltip: 'Show large text',
-              onPressed: () {
-                FocusScope.of(context).unfocus();
-                showLargeTextDialog(
-                  context,
-                  controller.text,
-                  emptyMessage: 'No info entered.',
-                );
-              },
-            ),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        autofocus: autofocus,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: labelText,
+          hintText: hintText,
+          border: const OutlineInputBorder(),
+          alignLabelWithHint: true,
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.content_copy),
+                tooltip: 'Copy info',
+                onPressed: copyText,
+              ),
+              IconButton(
+                icon: const Icon(Icons.open_in_full),
+                tooltip: 'Show large text',
+                onPressed: () {
+                  FocusScope.of(context).unfocus();
+                  showLargeTextDialog(
+                    context,
+                    controller.text,
+                    emptyMessage: 'No info entered.',
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

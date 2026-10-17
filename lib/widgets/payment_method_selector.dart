@@ -16,45 +16,67 @@ class PaymentMethodSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Payment method',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            for (final method in methods)
-              ActionChip(
-                backgroundColor: selectedMethod == method
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
-                label: Text(
-                  method,
-                  style: TextStyle(
-                    fontWeight: selectedMethod == method
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: selectedMethod == method
-                        ? Theme.of(context).colorScheme.onPrimary
-                        : null,
-                  ),
-                ),
-                onPressed: () => onSelected(method),
-              ),
-            ActionChip(
-              avatar: const Icon(Icons.more_horiz, size: 18),
-              label: const Text(''),
-              onPressed: onAddMethod,
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: double.infinity,
+      child: PopupMenuButton<_PaymentMethodAction>(
+        tooltip: 'Select payment method',
+        onSelected: (action) {
+          final method = action.method;
+          if (method == null) {
+            onAddMethod();
+          } else {
+            onSelected(method);
+          }
+        },
+        itemBuilder: (context) => [
+          for (final method in methods)
+            PopupMenuItem(
+              value: _PaymentMethodAction.method(method),
+              child: Text(method),
             ),
-          ],
+          if (methods.isNotEmpty) const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: _PaymentMethodAction.add(),
+            child: Row(
+              children: [
+                Icon(Icons.add),
+                SizedBox(width: 12),
+                Expanded(child: Text('Add payment method')),
+              ],
+            ),
+          ),
+        ],
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border.all(color: colorScheme.outline),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  selectedMethod.isNotEmpty
+                      ? selectedMethod
+                      : 'Select payment method',
+                ),
+              ),
+              const Icon(Icons.arrow_drop_down),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
+}
+
+class _PaymentMethodAction {
+  const _PaymentMethodAction.method(this.method);
+  const _PaymentMethodAction.add() : method = null;
+
+  final String? method;
 }

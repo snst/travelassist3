@@ -1200,9 +1200,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
-  static const VerificationMeta _daysMeta = const VerificationMeta(
-    'days',
-  );
+  static const VerificationMeta _daysMeta = const VerificationMeta('days');
   @override
   late final GeneratedColumn<int> days = GeneratedColumn<int>(
     'days',
@@ -1212,9 +1210,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
-  static const VerificationMeta _stateMeta = const VerificationMeta(
-    'state',
-  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
   @override
   late final GeneratedColumn<int> state = GeneratedColumn<int>(
     'state',
@@ -1234,6 +1230,21 @@ class $MoneyTransactionsTable extends MoneyTransactions
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _showInCalendarMeta = const VerificationMeta(
+    'showInCalendar',
+  );
+  @override
+  late final GeneratedColumn<bool> showInCalendar = GeneratedColumn<bool>(
+    'show_in_calendar',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_in_calendar" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1247,6 +1258,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     days,
     state,
     link,
+    showInCalendar,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1312,10 +1324,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     if (data.containsKey('days')) {
       context.handle(
         _daysMeta,
-        days.isAcceptableOrUnknown(
-          data['days']!,
-          _daysMeta,
-        ),
+        days.isAcceptableOrUnknown(data['days']!, _daysMeta),
       );
     }
     if (data.containsKey('state')) {
@@ -1328,6 +1337,15 @@ class $MoneyTransactionsTable extends MoneyTransactions
       context.handle(
         _linkMeta,
         link.isAcceptableOrUnknown(data['link']!, _linkMeta),
+      );
+    }
+    if (data.containsKey('show_in_calendar')) {
+      context.handle(
+        _showInCalendarMeta,
+        showInCalendar.isAcceptableOrUnknown(
+          data['show_in_calendar']!,
+          _showInCalendarMeta,
+        ),
       );
     }
     return context;
@@ -1383,6 +1401,10 @@ class $MoneyTransactionsTable extends MoneyTransactions
         DriftSqlType.string,
         data['${effectivePrefix}link'],
       )!,
+      showInCalendar: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_in_calendar'],
+      )!,
     );
   }
 
@@ -1405,6 +1427,7 @@ class MoneyTransaction extends DataClass
   final int days;
   final int state;
   final String link;
+  final bool showInCalendar;
   const MoneyTransaction({
     required this.id,
     required this.kind,
@@ -1417,6 +1440,7 @@ class MoneyTransaction extends DataClass
     required this.days,
     required this.state,
     required this.link,
+    required this.showInCalendar,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1432,6 +1456,7 @@ class MoneyTransaction extends DataClass
     map['days'] = Variable<int>(days);
     map['state'] = Variable<int>(state);
     map['link'] = Variable<String>(link);
+    map['show_in_calendar'] = Variable<bool>(showInCalendar);
     return map;
   }
 
@@ -1448,6 +1473,7 @@ class MoneyTransaction extends DataClass
       days: Value(days),
       state: Value(state),
       link: Value(link),
+      showInCalendar: Value(showInCalendar),
     );
   }
 
@@ -1468,6 +1494,7 @@ class MoneyTransaction extends DataClass
       days: serializer.fromJson<int>(json['days']),
       state: serializer.fromJson<int>(json['state']),
       link: serializer.fromJson<String>(json['link']),
+      showInCalendar: serializer.fromJson<bool>(json['showInCalendar']),
     );
   }
   @override
@@ -1485,6 +1512,7 @@ class MoneyTransaction extends DataClass
       'days': serializer.toJson<int>(days),
       'state': serializer.toJson<int>(state),
       'link': serializer.toJson<String>(link),
+      'showInCalendar': serializer.toJson<bool>(showInCalendar),
     };
   }
 
@@ -1500,6 +1528,7 @@ class MoneyTransaction extends DataClass
     int? days,
     int? state,
     String? link,
+    bool? showInCalendar,
   }) => MoneyTransaction(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -1512,6 +1541,7 @@ class MoneyTransaction extends DataClass
     days: days ?? this.days,
     state: state ?? this.state,
     link: link ?? this.link,
+    showInCalendar: showInCalendar ?? this.showInCalendar,
   );
   MoneyTransaction copyWithCompanion(MoneyTransactionsCompanion data) {
     return MoneyTransaction(
@@ -1523,11 +1553,12 @@ class MoneyTransaction extends DataClass
       comment: data.comment.present ? data.comment.value : this.comment,
       tags: data.tags.present ? data.tags.value : this.tags,
       date: data.date.present ? data.date.value : this.date,
-      days: data.days.present
-          ? data.days.value
-          : this.days,
+      days: data.days.present ? data.days.value : this.days,
       state: data.state.present ? data.state.value : this.state,
       link: data.link.present ? data.link.value : this.link,
+      showInCalendar: data.showInCalendar.present
+          ? data.showInCalendar.value
+          : this.showInCalendar,
     );
   }
 
@@ -1544,7 +1575,8 @@ class MoneyTransaction extends DataClass
           ..write('date: $date, ')
           ..write('days: $days, ')
           ..write('state: $state, ')
-          ..write('link: $link')
+          ..write('link: $link, ')
+          ..write('showInCalendar: $showInCalendar')
           ..write(')'))
         .toString();
   }
@@ -1562,6 +1594,7 @@ class MoneyTransaction extends DataClass
     days,
     state,
     link,
+    showInCalendar,
   );
   @override
   bool operator ==(Object other) =>
@@ -1577,7 +1610,8 @@ class MoneyTransaction extends DataClass
           other.date == this.date &&
           other.days == this.days &&
           other.state == this.state &&
-          other.link == this.link);
+          other.link == this.link &&
+          other.showInCalendar == this.showInCalendar);
 }
 
 class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
@@ -1592,6 +1626,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
   final Value<int> days;
   final Value<int> state;
   final Value<String> link;
+  final Value<bool> showInCalendar;
   const MoneyTransactionsCompanion({
     this.id = const Value.absent(),
     this.kind = const Value.absent(),
@@ -1604,6 +1639,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.days = const Value.absent(),
     this.state = const Value.absent(),
     this.link = const Value.absent(),
+    this.showInCalendar = const Value.absent(),
   });
   MoneyTransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1617,6 +1653,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.days = const Value.absent(),
     this.state = const Value.absent(),
     this.link = const Value.absent(),
+    this.showInCalendar = const Value.absent(),
   }) : amount = Value(amount),
        currency = Value(currency);
   static Insertable<MoneyTransaction> custom({
@@ -1631,6 +1668,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Expression<int>? days,
     Expression<int>? state,
     Expression<String>? link,
+    Expression<bool>? showInCalendar,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1644,6 +1682,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       if (days != null) 'days': days,
       if (state != null) 'state': state,
       if (link != null) 'link': link,
+      if (showInCalendar != null) 'show_in_calendar': showInCalendar,
     });
   }
 
@@ -1659,6 +1698,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Value<int>? days,
     Value<int>? state,
     Value<String>? link,
+    Value<bool>? showInCalendar,
   }) {
     return MoneyTransactionsCompanion(
       id: id ?? this.id,
@@ -1672,6 +1712,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       days: days ?? this.days,
       state: state ?? this.state,
       link: link ?? this.link,
+      showInCalendar: showInCalendar ?? this.showInCalendar,
     );
   }
 
@@ -1711,6 +1752,9 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     if (link.present) {
       map['link'] = Variable<String>(link.value);
     }
+    if (showInCalendar.present) {
+      map['show_in_calendar'] = Variable<bool>(showInCalendar.value);
+    }
     return map;
   }
 
@@ -1727,7 +1771,8 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
           ..write('date: $date, ')
           ..write('days: $days, ')
           ..write('state: $state, ')
-          ..write('link: $link')
+          ..write('link: $link, ')
+          ..write('showInCalendar: $showInCalendar')
           ..write(')'))
         .toString();
   }
@@ -2354,6 +2399,348 @@ typedef $$NotesTableProcessedTableManager =
       Note,
       PrefetchHooks Function()
     >;
+typedef $$MoneyTransactionsTableCreateCompanionBuilder =
+    MoneyTransactionsCompanion Function({
+      Value<int> id,
+      Value<int> kind,
+      required double amount,
+      required String currency,
+      Value<String> method,
+      Value<String> comment,
+      Value<String> tags,
+      Value<DateTime> date,
+      Value<int> days,
+      Value<int> state,
+      Value<String> link,
+      Value<bool> showInCalendar,
+    });
+typedef $$MoneyTransactionsTableUpdateCompanionBuilder =
+    MoneyTransactionsCompanion Function({
+      Value<int> id,
+      Value<int> kind,
+      Value<double> amount,
+      Value<String> currency,
+      Value<String> method,
+      Value<String> comment,
+      Value<String> tags,
+      Value<DateTime> date,
+      Value<int> days,
+      Value<int> state,
+      Value<String> link,
+      Value<bool> showInCalendar,
+    });
+
+class $$MoneyTransactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $MoneyTransactionsTable> {
+  $$MoneyTransactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get comment => $composableBuilder(
+    column: $table.comment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tags => $composableBuilder(
+    column: $table.tags,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get days => $composableBuilder(
+    column: $table.days,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get link => $composableBuilder(
+    column: $table.link,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showInCalendar => $composableBuilder(
+    column: $table.showInCalendar,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MoneyTransactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $MoneyTransactionsTable> {
+  $$MoneyTransactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get comment => $composableBuilder(
+    column: $table.comment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tags => $composableBuilder(
+    column: $table.tags,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get days => $composableBuilder(
+    column: $table.days,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get link => $composableBuilder(
+    column: $table.link,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showInCalendar => $composableBuilder(
+    column: $table.showInCalendar,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MoneyTransactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MoneyTransactionsTable> {
+  $$MoneyTransactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
+
+  GeneratedColumn<String> get comment =>
+      $composableBuilder(column: $table.comment, builder: (column) => column);
+
+  GeneratedColumn<String> get tags =>
+      $composableBuilder(column: $table.tags, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<int> get days =>
+      $composableBuilder(column: $table.days, builder: (column) => column);
+
+  GeneratedColumn<int> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get link =>
+      $composableBuilder(column: $table.link, builder: (column) => column);
+
+  GeneratedColumn<bool> get showInCalendar => $composableBuilder(
+    column: $table.showInCalendar,
+    builder: (column) => column,
+  );
+}
+
+class $$MoneyTransactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MoneyTransactionsTable,
+          MoneyTransaction,
+          $$MoneyTransactionsTableFilterComposer,
+          $$MoneyTransactionsTableOrderingComposer,
+          $$MoneyTransactionsTableAnnotationComposer,
+          $$MoneyTransactionsTableCreateCompanionBuilder,
+          $$MoneyTransactionsTableUpdateCompanionBuilder,
+          (
+            MoneyTransaction,
+            BaseReferences<
+              _$AppDatabase,
+              $MoneyTransactionsTable,
+              MoneyTransaction
+            >,
+          ),
+          MoneyTransaction,
+          PrefetchHooks Function()
+        > {
+  $$MoneyTransactionsTableTableManager(
+    _$AppDatabase db,
+    $MoneyTransactionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MoneyTransactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MoneyTransactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MoneyTransactionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> kind = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String> method = const Value.absent(),
+                Value<String> comment = const Value.absent(),
+                Value<String> tags = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> days = const Value.absent(),
+                Value<int> state = const Value.absent(),
+                Value<String> link = const Value.absent(),
+                Value<bool> showInCalendar = const Value.absent(),
+              }) => MoneyTransactionsCompanion(
+                id: id,
+                kind: kind,
+                amount: amount,
+                currency: currency,
+                method: method,
+                comment: comment,
+                tags: tags,
+                date: date,
+                days: days,
+                state: state,
+                link: link,
+                showInCalendar: showInCalendar,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> kind = const Value.absent(),
+                required double amount,
+                required String currency,
+                Value<String> method = const Value.absent(),
+                Value<String> comment = const Value.absent(),
+                Value<String> tags = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<int> days = const Value.absent(),
+                Value<int> state = const Value.absent(),
+                Value<String> link = const Value.absent(),
+                Value<bool> showInCalendar = const Value.absent(),
+              }) => MoneyTransactionsCompanion.insert(
+                id: id,
+                kind: kind,
+                amount: amount,
+                currency: currency,
+                method: method,
+                comment: comment,
+                tags: tags,
+                date: date,
+                days: days,
+                state: state,
+                link: link,
+                showInCalendar: showInCalendar,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MoneyTransactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MoneyTransactionsTable,
+      MoneyTransaction,
+      $$MoneyTransactionsTableFilterComposer,
+      $$MoneyTransactionsTableOrderingComposer,
+      $$MoneyTransactionsTableAnnotationComposer,
+      $$MoneyTransactionsTableCreateCompanionBuilder,
+      $$MoneyTransactionsTableUpdateCompanionBuilder,
+      (
+        MoneyTransaction,
+        BaseReferences<
+          _$AppDatabase,
+          $MoneyTransactionsTable,
+          MoneyTransaction
+        >,
+      ),
+      MoneyTransaction,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2364,4 +2751,6 @@ class $AppDatabaseManager {
       $$TodoItemsTableTableManager(_db, _db.todoItems);
   $$NotesTableTableManager get notes =>
       $$NotesTableTableManager(_db, _db.notes);
+  $$MoneyTransactionsTableTableManager get moneyTransactions =>
+      $$MoneyTransactionsTableTableManager(_db, _db.moneyTransactions);
 }

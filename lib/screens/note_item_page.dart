@@ -151,8 +151,6 @@ class _NoteItemPageState extends State<NoteItemPage> {
                 onTagAdded: _addTag,
                 onTagRemoved: _removeTag,
               ),
-              const SizedBox(height: 20),
-
               // Comment Section
               CommentInput(
                 controller: _commentController,

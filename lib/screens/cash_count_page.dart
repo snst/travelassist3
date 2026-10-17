@@ -175,14 +175,11 @@ class _CashCountFormState extends State<_CashCountForm> {
                   ? CurrencyValue.safeConvertToDouble(_amountController.text)
                   : null,
             ),
-          const SizedBox(height: 20),
           CommentInput(controller: _commentController),
-          const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
           ),
-          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),

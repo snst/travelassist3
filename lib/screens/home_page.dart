@@ -9,7 +9,7 @@ import 'cash_count_page.dart';
 import 'currency_settings_screen.dart';
 import 'deposit_page.dart';
 import 'expense_page.dart';
-import 'hotel_calendar_page.dart';
+import 'calendar_page.dart';
 import 'hotel_page.dart';
 import 'note_item_page.dart';
 import 'note_list_page.dart';
@@ -86,7 +86,7 @@ final _groups = <_FeatureGroup>[
     ),
     _Feature('Balance', Icons.pie_chart, (db) => BalancePage(database: db)),
     _Feature(
-      'Hotels',
+      'Calendar',
       Icons.calendar_month,
       (db) => CalendarPage(database: db),
     ),

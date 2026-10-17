@@ -7,11 +7,10 @@ import '../utils/payment_methods.dart';
 import '../utils/transaction_kind.dart';
 import '../widgets/add_payment_method_dialog.dart';
 import '../widgets/comment_input.dart';
-import '../widgets/currency_amount_input.dart';
 import '../widgets/date_time_picker_tile.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/link_editor.dart';
-import '../widgets/payment_method_selector.dart';
+import '../widgets/payment_currency_amount_input.dart';
 import '../widgets/transaction_data_scaffold.dart';
 
 class WithdrawalPage extends StatefulWidget {
@@ -35,7 +34,7 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
     return TransactionDataScaffold(
       database: widget.database,
       title: existing == null
-          ? 'Add ATM Withdrawal'
+          ? 'Add Withdrawal'
           : 'Edit ${transactionLabel(TransactionKind.withdrawal)}',
       actions: [
         if (existing != null)
@@ -173,7 +172,12 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
           16 + MediaQuery.of(context).padding.bottom,
         ),
         children: [
-          CurrencyAmountInput(
+          PaymentCurrencyAmountInput(
+            methods: _methods,
+            selectedMethod: _methodController.text,
+            onMethodSelected: (method) =>
+                setState(() => _methodController.text = method),
+            onAddMethod: _addMethod,
             currencyCodes: codes,
             selectedCurrencyCode: _currencyCode,
             onCurrencySelected: (code) => setState(() => _currencyCode = code),
@@ -181,24 +185,12 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
             autofocus: widget.existing == null,
             onAmountChanged: null,
           ),
-          const SizedBox(height: 20),
-          PaymentMethodSelector(
-            methods: _methods,
-            selectedMethod: _methodController.text,
-            onSelected: (method) =>
-                setState(() => _methodController.text = method),
-            onAddMethod: _addMethod,
-          ),
-          const SizedBox(height: 20),
           CommentInput(controller: _commentController),
-          const SizedBox(height: 20),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
           ),
-          const SizedBox(height: 16),
           LinkEditor(controller: _links),
-          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),

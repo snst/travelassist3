@@ -44,7 +44,8 @@ class CurrencyAmountInput extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
+        SizedBox(
+          width: 68,
           child: CurrencySelector(
             codes: currencyCodes,
             selectedCode: selectedCurrencyCode,
@@ -52,14 +53,12 @@ class CurrencyAmountInput extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        SizedBox(
-          width: 200,
+        Expanded(
           child: TextFormField(
             controller: amountController,
             readOnly: readOnly,
             autofocus: autofocus,
             textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 18),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(

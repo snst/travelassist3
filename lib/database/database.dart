@@ -44,6 +44,8 @@ class MoneyTransactions extends Table {
   IntColumn get days => integer().withDefault(const Constant(1))();
   IntColumn get state => integer().withDefault(const Constant(2))(); // TransactionState.index, default paid
   TextColumn get link => text().withDefault(const Constant(''))(); // tab separated, like Notes.link
+  BoolColumn get showInCalendar =>
+      boolean().withDefault(const Constant(false))();
 }
 
 @DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
@@ -52,13 +54,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
+      },
+      onUpgrade: (m, from, to) async {
+        if (from < 10) {
+          await m.addColumn(
+            moneyTransactions,
+            moneyTransactions.showInCalendar,
+          );
+        }
       },
     );
   }
@@ -279,6 +289,7 @@ class AppDatabase extends _$AppDatabase {
     int days = 1,
     TransactionState state = TransactionState.paid,
     String link = '',
+    bool showInCalendar = false,
   }) {
     return into(moneyTransactions).insert(
       MoneyTransactionsCompanion.insert(
@@ -292,6 +303,7 @@ class AppDatabase extends _$AppDatabase {
         days: Value(days),
         state: Value(state.index),
         link: Value(link),
+        showInCalendar: Value(showInCalendar),
       ),
     );
   }

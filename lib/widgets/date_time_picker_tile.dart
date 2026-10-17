@@ -35,7 +35,7 @@ class DateTimePickerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.symmetric(vertical: 4),
       leading: const Icon(Icons.event),
       title: Text(formatDay(value)),
       //trailing: const Icon(Icons.edit_calendar),

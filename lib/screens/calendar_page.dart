@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../database/database.dart';
 import '../utils/date_format.dart';
 import '../widgets/hotel_state_badge.dart';
@@ -7,33 +8,33 @@ import 'transaction_navigation.dart';
 
 const _rowHeight = 64.0;
 const _dateColumnWidth = 64.0;
+const _dayCounterWidth = 40.0;
 
-/// A booking placed on the calendar: [startDay] is a day index, [lane] a column.
+/// An item placed on the calendar: [startDay] is a day index, [lane] a column.
 class _Booking {
   final MoneyTransaction transaction;
   final DateTime start;
-  final int length;
   int startDay = 0;
   int lane = 0;
   bool overlaps = false;
 
-  _Booking(this.transaction, this.start, this.length);
+  _Booking(this.transaction, this.start);
 
+  bool get isHotel => transaction.isHotel;
   int get nights => transaction.days < 1 ? 1 : transaction.days;
-
-  int get endDay => startDay + nights;
+  int get calendarDays => isHotel ? nights + 1 : 1;
+  int get endDay => startDay + (isHotel ? nights : 1);
 
   String get title {
     final t = transaction;
     if (t.comment.isNotEmpty) return t.comment;
     if (t.tagList.isNotEmpty) return t.tagList.join(' ');
-    return 'Hotel';
+    return isHotel ? 'Hotel' : 'Expense';
   }
 }
 
-/// Lists hotel bookings on a vertical calendar: one row per day, one column per
-/// parallel booking. A booking covers [MoneyTransaction.date] for
-/// [MoneyTransaction.days] days; overlapping bookings are highlighted.
+/// Lists hotel bookings and selected expenses on a vertical calendar.
+/// Hotels cover their stay; expenses appear only on their transaction date.
 class CalendarPage extends StatelessWidget {
   final AppDatabase database;
 
@@ -43,7 +44,7 @@ class CalendarPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hotel Calendar'),
+        title: const Text('Calendar'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -61,20 +62,25 @@ class CalendarPage extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final hotels = snapshot.data!.where((t) => t.isHotel).toList();
-          if (hotels.isEmpty) {
+          final entries = snapshot.data!
+              .where((t) => t.isHotel || (t.isExpense && t.showInCalendar))
+              .toList();
+          if (entries.isEmpty) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.hotel, size: 64, color: Colors.grey),
+                  Icon(Icons.calendar_month, size: 64, color: Colors.grey),
                   SizedBox(height: 16),
-                  Text('No hotel bookings yet.', style: TextStyle(fontSize: 16)),
+                  Text(
+                    'No calendar entries yet.',
+                    style: TextStyle(fontSize: 16),
+                  ),
                 ],
               ),
             );
           }
-          return _CalendarView(database: database, hotels: hotels);
+          return _CalendarView(database: database, entries: entries);
         },
       ),
     );
@@ -83,31 +89,29 @@ class CalendarPage extends StatelessWidget {
 
 class _CalendarView extends StatelessWidget {
   final AppDatabase database;
-  final List<MoneyTransaction> hotels;
+  final List<MoneyTransaction> entries;
 
-  const _CalendarView({required this.database, required this.hotels});
+  const _CalendarView({required this.database, required this.entries});
 
   static DateTime _dayOf(DateTime d) => DateTime.utc(d.year, d.month, d.day);
 
   @override
   Widget build(BuildContext context) {
-    // A booking of 0 days is not counted in the average but still occupies its day.
-    final bookings = [
-      for (final t in hotels)
-        _Booking(t, _dayOf(t.date), (t.days < 1 ? 1 : t.days) + 1),
-    ]..sort((a, b) {
+    final bookings = [for (final t in entries) _Booking(t, _dayOf(t.date))]
+      ..sort((a, b) {
         final byStart = a.start.compareTo(b.start);
-        return byStart != 0 ? byStart : b.length.compareTo(a.length);
+        return byStart != 0
+            ? byStart
+            : b.calendarDays.compareTo(a.calendarDays);
       });
 
     final first = bookings.first.start;
-    var last = bookings.first.start.add(Duration(days: bookings.first.length));
+    var totalDays = 0;
     for (final b in bookings) {
-      final end = b.start.add(Duration(days: b.length));
-      if (end.isAfter(last)) last = end;
       b.startDay = b.start.difference(first).inDays;
+      final endDay = b.startDay + b.calendarDays;
+      if (endDay > totalDays) totalDays = endDay;
     }
-    final totalDays = last.difference(first).inDays;
 
     // Greedy lane assignment: the first lane that is free at the start day.
     final laneEnds = <int>[];
@@ -126,7 +130,7 @@ class _CalendarView extends StatelessWidget {
     final bottomHalfBookings = List.generate(totalDays, (_) => <_Booking>[]);
     final fullDayBookings = List.generate(totalDays, (_) => <_Booking>[]);
 
-    for (final b in bookings) {
+    for (final b in bookings.where((b) => b.isHotel)) {
       final start = b.startDay;
       final end = b.endDay;
       if (start == end) {
@@ -148,7 +152,8 @@ class _CalendarView extends StatelessWidget {
       final top = topHalfBookings[d];
       final bottom = bottomHalfBookings[d];
 
-      final hasOverlap = full.length > 1 ||
+      final hasOverlap =
+          full.length > 1 ||
           (full.isNotEmpty && (top.isNotEmpty || bottom.isNotEmpty)) ||
           top.length > 1 ||
           bottom.length > 1;
@@ -183,7 +188,7 @@ class _CalendarView extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '$overlapping bookings overlap (marked in red)',
+                    '$overlapping bookings overlap',
                     style: TextStyle(color: scheme.onErrorContainer),
                   ),
                 ),
@@ -197,7 +202,11 @@ class _CalendarView extends StatelessWidget {
               builder: (context, constraints) {
                 final lanes = laneEnds.length;
                 final laneWidth =
-                    (constraints.maxWidth - _dateColumnWidth - 8) / lanes;
+                    (constraints.maxWidth -
+                        _dateColumnWidth -
+                        _dayCounterWidth -
+                        8) /
+                    lanes;
                 return SizedBox(
                   height: totalDays * _rowHeight,
                   child: Stack(
@@ -210,19 +219,20 @@ class _CalendarView extends StatelessWidget {
                           height: _rowHeight,
                           child: _DayRow(
                             day: first.add(Duration(days: d)),
+                            dayNumber: d + 1,
                             isToday: first.add(Duration(days: d)) == today,
                             overlapping: dayHasOverlap[d],
                           ),
                         ),
                       for (final b in bookings)
                         Positioned(
-                          top: b.length >= 2
+                          top: b.isHotel
                               ? b.startDay * _rowHeight + (_rowHeight / 2) + 2
                               : b.startDay * _rowHeight + (_rowHeight / 4) + 2,
                           left: _dateColumnWidth + b.lane * laneWidth,
                           width: laneWidth - 4,
-                          height: b.length >= 2
-                              ? (b.length - 1) * _rowHeight - 4
+                          height: b.isHotel
+                              ? b.nights * _rowHeight - 4
                               : (_rowHeight / 2) - 4,
                           child: _BookingBar(
                             booking: b,
@@ -247,11 +257,13 @@ class _CalendarView extends StatelessWidget {
 
 class _DayRow extends StatelessWidget {
   final DateTime day;
+  final int dayNumber;
   final bool isToday;
   final bool overlapping;
 
   const _DayRow({
     required this.day,
+    required this.dayNumber,
     required this.isToday,
     required this.overlapping,
   });
@@ -264,8 +276,8 @@ class _DayRow extends StatelessWidget {
     final background = overlapping
         ? scheme.errorContainer.withValues(alpha: 0.4)
         : weekend
-            ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
-            : null;
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+        : null;
 
     return Container(
       decoration: BoxDecoration(
@@ -279,7 +291,9 @@ class _DayRow extends StatelessWidget {
             width: _dateColumnWidth,
             height: _rowHeight - 1,
             alignment: Alignment.center,
-            decoration: isToday ? BoxDecoration(color: scheme.primaryContainer) : null,
+            decoration: isToday
+                ? BoxDecoration(color: scheme.primaryContainer)
+                : null,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Column(
@@ -303,6 +317,35 @@ class _DayRow extends StatelessWidget {
               ),
             ),
           ),
+          const Spacer(),
+          SizedBox(
+            width: _dayCounterWidth,
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 5, right: 8),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: scheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    child: Text(
+                      '$dayNumber',
+                      style: theme.labelSmall?.copyWith(
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -320,18 +363,36 @@ class _BookingBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = booking.transaction;
     final state = t.transactionState;
-    final background = switch (state) {
-      TransactionState.planned => scheme.tertiaryContainer,
-      TransactionState.booked => scheme.primaryContainer,
-      TransactionState.paid => Colors.green.shade100,
-    };
+    /*final background = !booking.isHotel && isDark
+        ? switch (state) {
+            TransactionState.planned => scheme.tertiaryContainer,
+            TransactionState.booked => scheme.primaryContainer,
+            TransactionState.paid => scheme.secondaryContainer,
+          }
+        : switch (state) {
+            TransactionState.planned => scheme.tertiaryContainer,
+            TransactionState.booked => scheme.primaryContainer,
+            TransactionState.paid => Colors.green.shade100,
+          };
+    final expenseForeground = isDark
+        ? switch (state) {
+            TransactionState.planned => scheme.onTertiaryContainer,
+            TransactionState.booked => scheme.onPrimaryContainer,
+            TransactionState.paid => scheme.onSecondaryContainer,
+          }
+        : null;*/
+    final background = booking.isHotel
+        ? scheme.primaryContainer
+        : scheme.tertiaryContainer;
+    final expenseForeground = booking.isHotel
+        ? scheme.onPrimaryContainer
+        : scheme.onTertiaryContainer;
     final checkIn = booking.start;
-    final nights = (booking.length - 1).clamp(1, 9999);
+    final nights = booking.nights;
     final checkOut = booking.start.add(Duration(days: nights));
     final checkInStr = '${checkIn.day}.${checkIn.month}.';
     final checkOutStr = '${checkOut.day}.${checkOut.month}.';
     final nightsStr = nights == 1 ? '1 night' : '$nights nights';
-
     return Material(
       color: background,
       shape: RoundedRectangleBorder(
@@ -345,51 +406,92 @@ class _BookingBar extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: booking.isHotel
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (booking.overlaps) ...[
-                      Icon(Icons.warning_amber, size: 14, color: scheme.error),
-                      const SizedBox(width: 2),
-                    ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            nightsStr,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        if (booking.overlaps) ...[
+                          Icon(
+                            Icons.warning_amber,
+                            size: 14,
+                            color: scheme.error,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        const SizedBox(width: 4),
+                        HotelStateBadge(state: state, compact: true),
+                      ],
+                    ),
+                    Text(
+                      '$checkInStr → $checkOutStr',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    const SizedBox(height: 2),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const infoStyle = TextStyle(
+                            fontSize: 13,
+                            height: 1.15,
+                          );
+                          final lineHeight =
+                              MediaQuery.textScalerOf(context).scale(13) *
+                              infoStyle.height!;
+                          final maxLines = (constraints.maxHeight / lineHeight)
+                              .floor()
+                              .clamp(1, 1000)
+                              .toInt();
+
+                          return Text(
+                            booking.title,
+                            maxLines: maxLines,
+                            overflow: TextOverflow.ellipsis,
+                            style: infoStyle.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 14,
+                      color: expenseForeground,
+                    ),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         booking.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ).copyWith(color: expenseForeground),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    HotelStateBadge(state: state),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.login, size: 10, color: scheme.outline),
-                    const SizedBox(width: 2),
-                    Text(checkInStr, style: TextStyle(color: scheme.outline, fontSize: 11)),
-                    Text(' → ', style: TextStyle(fontSize: 11, color: scheme.outline)),
-                    Icon(Icons.logout, size: 10, color: scheme.outline),
-                    const SizedBox(width: 2),
-                    Text(checkOutStr, style: TextStyle(color: scheme.outline, fontSize: 11)),
-                    const Spacer(),
-                    Text(
-                      nightsStr,
-                      style: TextStyle(color: scheme.outline, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

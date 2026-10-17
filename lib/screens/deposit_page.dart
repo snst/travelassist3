@@ -147,14 +147,11 @@ class _DepositFormState extends State<_DepositForm> {
             autofocus: widget.existing == null,
             onAmountChanged: null,
           ),
-          const SizedBox(height: 20),
           CommentInput(controller: _commentController),
-          const SizedBox(height: 8),
           DateTimePickerTile(
             value: _date,
             onChanged: (date) => setState(() => _date = date),
           ),
-          const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
