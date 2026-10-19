@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../database/database.dart';
 import '../widgets/large_text_dialog.dart';
 import '../widgets/tag_filter_bar.dart';
@@ -58,13 +59,14 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _selectedTags.isEmpty ? 'Travel Notes' : 'Filter: ${_selectedTags.join(', ')}',
+          _selectedTags.isEmpty
+              ? 'Travel Notes'
+              : 'Filter: ${_selectedTags.join(', ')}',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
@@ -114,7 +116,11 @@ class _NoteListPageState extends State<NoteListPage> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.note_alt, size: 64, color: Colors.grey),
+                            const Icon(
+                              Icons.note_alt,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
                             const SizedBox(height: 16),
                             Text(
                               _selectedTags.isEmpty
@@ -145,93 +151,104 @@ class _NoteListPageState extends State<NoteListPage> {
                               padding: const EdgeInsets.only(right: 20),
                               margin: const EdgeInsets.symmetric(vertical: 6),
                               color: Colors.red,
-                              child: const Icon(Icons.delete, color: Colors.white),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                              ),
                             ),
                             onDismissed: (_) => _deleteNote(note),
                             child: Card(
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            child: ListTile(
-                              onTap: () => _openNotePage(note),
-                              title: Text(
-                                note.comment.isNotEmpty
-                                    ? note.comment
-                                    : note.shortLink(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (note.comment.isNotEmpty &&
-                                      note.linkList.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2.0),
-                                      child: Text(
-                                        note.linksSummary(),
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              child: ListTile(
+                                onTap: () => _openNotePage(note),
+                                title: note.comment.isNotEmpty
+                                    ? Text(
+                                        note.comment,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                            fontSize: 12, color: Colors.blueAccent),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      )
+                                    : null,
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ...note.linkList.map(
+                                      (link) => Text(
+                                        link,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.left,
+                                        textDirection: TextDirection.rtl,
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary,
+                                        ),
                                       ),
                                     ),
-                                  if (noteTags.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 4,
-                                      runSpacing: 2,
-                                      children: noteTags.map((tag) {
-                                        final isSelected =
-                                            _selectedTags.contains(tag);
-                                        return InkWell(
-                                          onTap: () => _toggleTagFilter(tag),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: isSelected
-                                                  ? Theme.of(context)
-                                                      .colorScheme
-                                                      .primaryContainer
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .surfaceContainerHigh,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              tag,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
+                                    if (noteTags.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 2,
+                                        children: noteTags.map((tag) {
+                                          final isSelected = _selectedTags
+                                              .contains(tag);
+                                          return InkWell(
+                                            onTap: () => _toggleTagFilter(tag),
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
                                                 color: isSelected
                                                     ? Theme.of(context)
-                                                        .colorScheme
-                                                        .primary
+                                                          .colorScheme
+                                                          .primaryContainer
                                                     : Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
+                                                          .colorScheme
+                                                          .surfaceContainerHigh,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                tag,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isSelected
+                                                      ? Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                      : Theme.of(context)
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.visibility_outlined),
+                                  tooltip: 'View Info',
+                                  onPressed: () {
+                                    showLargeTextDialog(
+                                      context,
+                                      note.comment,
+                                      emptyMessage: 'No info entered.',
+                                    );
+                                  },
+                                ),
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.visibility_outlined),
-                                tooltip: 'View Info',
-                                onPressed: () {
-                                  showLargeTextDialog(
-                                    context,
-                                    note.comment,
-                                    emptyMessage: 'No info entered.',
-                                  );
-                                },
-                              ),
-                            ),
                             ),
                           );
                         },
