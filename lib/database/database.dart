@@ -3,7 +3,19 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import 'database_file_deleter_stub.dart'
+    if (dart.library.io) 'database_file_deleter_io.dart'
+    as file_deleter;
 part 'database.g.dart';
+
+const defaultDatabaseName = 'travel_assist_db';
+
+class DatabaseProfile {
+  final String id;
+  final String name;
+
+  const DatabaseProfile({required this.id, required this.name});
+}
 
 class Currencies extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -60,7 +72,8 @@ class MoneyTransactions extends Table {
 
 @DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase({String name = defaultDatabaseName})
+    : super(_openConnection(name));
   AppDatabase.forTesting(super.e);
 
   @override
@@ -83,8 +96,20 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  static QueryExecutor _openConnection() {
-    return driftDatabase(name: 'travel_assist_db');
+  static QueryExecutor _openConnection(String name) {
+    _validateDatabaseName(name);
+    return driftDatabase(name: name);
+  }
+
+  static Future<void> deleteDatabaseFile(String name) async {
+    _validateDatabaseName(name);
+    await file_deleter.deleteDatabaseFile(name);
+  }
+
+  static void _validateDatabaseName(String name) {
+    if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(name)) {
+      throw ArgumentError.value(name, 'name', 'Invalid database name');
+    }
   }
 
   // --- Currency Operations ---

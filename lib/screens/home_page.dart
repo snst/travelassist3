@@ -107,6 +107,11 @@ final _groups = <_FeatureGroup>[
 class HomePage extends StatelessWidget {
   final String title;
   final AppDatabase database;
+  final List<DatabaseProfile> databaseProfiles;
+  final String activeDatabaseId;
+  final Future<void> Function(String id)? onDatabaseSelected;
+  final Future<void> Function(String name)? onDatabaseCreated;
+  final Future<void> Function(String id)? onDatabaseDeleted;
   final bool darkModeEnabled;
   final Future<void> Function(bool enabled)? onDarkModeChanged;
 
@@ -114,6 +119,11 @@ class HomePage extends StatelessWidget {
     super.key,
     required this.title,
     required this.database,
+    this.databaseProfiles = const [],
+    this.activeDatabaseId = '',
+    this.onDatabaseSelected,
+    this.onDatabaseCreated,
+    this.onDatabaseDeleted,
     this.darkModeEnabled = false,
     this.onDarkModeChanged,
   });
@@ -123,22 +133,17 @@ class HomePage extends StatelessWidget {
     final route = DialogRoute<bool>(
       context: context,
       themes: InheritedTheme.capture(from: context, to: navigator.context),
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Dark mode'),
-              value: darkModeEnabled,
-              onChanged: (enabled) => Navigator.of(context).pop(enabled),
-            ),
-          ],
+        content: SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Dark mode'),
+          value: darkModeEnabled,
+          onChanged: (enabled) => Navigator.of(dialogContext).pop(enabled),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Close'),
           ),
         ],
@@ -154,24 +159,186 @@ class HomePage extends StatelessWidget {
     }
   }
 
+  Future<String?> _promptForDatabaseName(BuildContext context) async {
+    final controller = TextEditingController();
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final route = DialogRoute<String>(
+      context: context,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add database'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 40,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Database name',
+            hintText: 'e.g. Japan trip',
+          ),
+          onSubmitted: (name) => Navigator.of(dialogContext).pop(name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    try {
+      final name = await navigator.push<String>(route);
+      await route.completed;
+      await WidgetsBinding.instance.endOfFrame;
+      return name;
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<bool> _runDatabaseAction(
+    BuildContext context,
+    Future<void> Function()? action,
+  ) async {
+    if (action == null) return true;
+    try {
+      await action();
+      return true;
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update database: $error')),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _confirmDeleteDatabase(
+    BuildContext context,
+    DatabaseProfile profile,
+  ) async {
+    if (databaseProfiles.length <= 1) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (confirmationContext) => AlertDialog(
+        title: Text('Delete ${profile.name}?'),
+        content: Text(
+          'This will permanently delete "${profile.name}" and all of its data. '
+          'This cannot be undone. If it is the active database, the app will '
+          'switch to another database.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(confirmationContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(confirmationContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final deleted = await _runDatabaseAction(
+      context,
+      () async => await onDatabaseDeleted?.call(profile.id),
+    );
+    if (deleted && context.mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _showDatabaseContent(BuildContext context) async {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Manage database content'),
         content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final content in DatabaseContent.values)
-                _DatabaseContentRow(
-                  content: content,
-                  onDelete: () => _confirmDeleteContent(dialogContext, content),
-                  onImport: () => _importContent(dialogContext, content),
-                  onExport: () => _exportContent(dialogContext, content),
+          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Database',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
-            ],
+                for (final profile in databaseProfiles)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      profile.id == activeDatabaseId
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                    ),
+                    title: Text(profile.name),
+                    selected: profile.id == activeDatabaseId,
+                    trailing: IconButton(
+                      tooltip: databaseProfiles.length <= 1
+                          ? 'Cannot delete the last database'
+                          : 'Delete ${profile.name}',
+                      onPressed: databaseProfiles.length <= 1
+                          ? null
+                          : () =>
+                                _confirmDeleteDatabase(dialogContext, profile),
+                      icon: const Icon(Icons.delete_outline),
+                    ),
+                    onTap: () async {
+                      if (profile.id == activeDatabaseId) {
+                        Navigator.of(dialogContext).pop();
+                        return;
+                      }
+                      final updated = await _runDatabaseAction(
+                        dialogContext,
+                        () async => await onDatabaseSelected?.call(profile.id),
+                      );
+                      if (updated && dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                    },
+                  ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final name = await _promptForDatabaseName(dialogContext);
+                      if (name != null && dialogContext.mounted) {
+                        final created = await _runDatabaseAction(
+                          dialogContext,
+                          () async => await onDatabaseCreated?.call(name),
+                        );
+                        if (created && dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add database'),
+                  ),
+                ),
+                const Divider(),
+                for (final content in DatabaseContent.values)
+                  _DatabaseContentRow(
+                    content: content,
+                    onDelete: () =>
+                        _confirmDeleteContent(dialogContext, content),
+                    onImport: () => _importContent(dialogContext, content),
+                    onExport: () => _exportContent(dialogContext, content),
+                  ),
+              ],
+            ),
           ),
         ),
         actions: [
