@@ -337,7 +337,9 @@ class _MyAppState extends State<MyApp> {
               ),
             )
           : HomePage(
-              title: 'Travel Assist',
+              title: _databaseProfiles
+                  .firstWhere((profile) => profile.id == _activeDatabaseId)
+                  .name,
               database: _database!,
               databaseProfiles: _databaseProfiles,
               activeDatabaseId: _activeDatabaseId!,

@@ -260,7 +260,7 @@ class HomePage extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Manage database content'),
+        title: const Text('Database'),
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
           child: SingleChildScrollView(
@@ -566,7 +566,7 @@ class HomePage extends StatelessWidget {
                   children: [
                     Icon(Icons.storage_outlined, size: 20),
                     SizedBox(width: 12),
-                    Flexible(child: Text('Manage database content')),
+                    Flexible(child: Text('Database')),
                   ],
                 ),
               ),

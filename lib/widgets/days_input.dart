@@ -13,8 +13,8 @@ class DaysInput extends StatelessWidget {
   });
 
   String get _summary => switch (days) {
-        1 => '1 day',
-        _ => '$days days',
+        1 => '1 night',
+        _ => '$days nights',
       };
 
   @override
@@ -29,7 +29,7 @@ class DaysInput extends StatelessWidget {
               icon: const Icon(Icons.remove_circle_outline),
               tooltip: 'Fewer days',
               visualDensity: VisualDensity.compact,
-              onPressed: days > 1 ? () => onChanged(days - 1) : null,
+              onPressed: days > 0 ? () => onChanged(days - 1) : null,
             ),
             Expanded(
               child: Text(

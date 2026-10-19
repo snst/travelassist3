@@ -38,6 +38,7 @@ void main() {
       currency: 'EUR',
       comment: info,
       tags: ['food', 'lunch'],
+      method: 'Visa',
     );
 
     await tester.pumpWidget(
@@ -52,44 +53,78 @@ void main() {
     expect(title.data, info);
     expect(title.maxLines, 1);
     expect(title.overflow, TextOverflow.ellipsis);
-    final tags = subtitle.children.first as Text;
-    expect(tags.data, 'food lunch');
-    expect(tags.style, title.style);
-
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
-  });
-
-  testWidgets('Shows tags on the first line when info is empty', (
-    tester,
-  ) async {
-    await database.addTransaction(
-      kind: TransactionKind.expense,
-      amount: 12,
-      currency: 'EUR',
-      tags: ['food', 'lunch'],
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(home: ExpensesListPage(database: database)),
-    );
-    await tester.pumpAndSettle();
-
-    final tile = tester.widget<ListTile>(find.byType(ListTile).first);
-    final title = tile.title! as Text;
-
-    expect(title.data, 'food lunch');
-    expect(title.maxLines, 1);
-    expect(title.overflow, TextOverflow.ellipsis);
-    expect(tile.subtitle, isNotNull);
+    final tagWrap = subtitle.children.first as Wrap;
+    expect(tagWrap.children.whereType<InkWell>().length, 2);
     expect(
-      (tile.subtitle! as Column).children.whereType<Text>().map(
-        (text) => text.data,
-      ),
-      isNot(contains('food lunch')),
+      find.descendant(of: find.byType(Wrap).first, matching: find.text('Visa')),
+      findsOneWidget,
     );
-
+    expect(
+      find.descendant(of: find.byType(Wrap).first, matching: find.text('food')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(Wrap).first,
+        matching: find.text('lunch'),
+      ),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
   });
+
+  testWidgets(
+    'Shows expense type on the first line and tags below when info is empty',
+    (tester) async {
+      await database.addTransaction(
+        kind: TransactionKind.expense,
+        amount: 12,
+        currency: 'EUR',
+        tags: ['food', 'lunch'],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: ExpensesListPage(database: database)),
+      );
+      await tester.pumpAndSettle();
+
+      final tile = tester.widget<ListTile>(find.byType(ListTile).first);
+      final title = tile.title! as Text;
+
+      expect(title.data, 'Expense');
+      expect(title.maxLines, 1);
+      expect(title.overflow, TextOverflow.ellipsis);
+      expect(tile.subtitle, isNotNull);
+      final foodTag = find.descendant(
+        of: find.byType(Wrap).first,
+        matching: find.text('food'),
+      );
+      expect(foodTag, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(Wrap).first,
+          matching: find.text('lunch'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(Wrap).first,
+          matching: find.text('Cash'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(foodTag);
+      await tester.pumpAndSettle();
+      final foodFilter = tester
+          .widgetList<FilterChip>(find.byType(FilterChip))
+          .firstWhere((chip) => (chip.label as Text).data == 'food');
+      expect(foodFilter.selected, isTrue);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    },
+  );
 }

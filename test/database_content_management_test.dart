@@ -26,7 +26,7 @@ void main() {
     await tester.tap(find.byTooltip('Cash tools'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Manage database content'));
+    await tester.tap(find.text('Database'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   }

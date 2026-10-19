@@ -82,7 +82,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Manage database content'));
+    await tester.tap(find.text('Database'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Cannot delete the last database'), findsOneWidget);
     await tester.tap(find.text('Add database'));
@@ -98,6 +98,7 @@ void main() {
           .map((text) => text.data)
           .join(' | '),
     );
+    expect(find.text('Japan trip'), findsOneWidget);
 
     var preferences = await SharedPreferences.getInstance();
     expect(preferences.getString('activeDatabaseId'), 'japan_trip');
@@ -106,7 +107,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Manage database content'));
+    await tester.tap(find.text('Database'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Delete Japan trip'));
     await tester.pumpAndSettle();
@@ -129,6 +130,7 @@ void main() {
       'japan_trip',
       'travel_assist_db',
     ]);
+    expect(find.text('Travel Assist'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

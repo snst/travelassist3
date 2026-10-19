@@ -148,7 +148,7 @@ class _EntriesViewState extends State<_EntriesView> {
     }).toList();
 
     final tagSet = <String>{..._selectedTags};
-    for (final t in filteredTransactions.where((t) => t.isSpending)) {
+    for (final t in filteredTransactions) {
       tagSet.addAll(t.tagList);
     }
     final sortedTags = tagSet.toList()..sort();
@@ -234,6 +234,8 @@ class _EntriesViewState extends State<_EntriesView> {
                     return _EntryTile(
                       transaction: t,
                       home: toHome(t),
+                      selectedTags: _selectedTags,
+                      onTagSelected: _toggleTagFilter,
                       onTap: () => openTransaction(context, widget.database, t),
                       onDelete: () => _delete(context, t),
                     );
@@ -261,12 +263,16 @@ class _DayHeader {
 class _EntryTile extends StatelessWidget {
   final MoneyTransaction transaction;
   final CurrencyValue home;
+  final List<String> selectedTags;
+  final ValueChanged<String> onTagSelected;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _EntryTile({
     required this.transaction,
     required this.home,
+    required this.selectedTags,
+    required this.onTagSelected,
     required this.onTap,
     required this.onDelete,
   });
@@ -274,9 +280,7 @@ class _EntryTile extends StatelessWidget {
   String get _title {
     switch (transaction.type) {
       case TransactionKind.expense:
-        return transaction.tagList.isNotEmpty
-            ? transaction.tagList.join(' ')
-            : 'Expense';
+        return 'Expense';
       case TransactionKind.withdrawal:
         return 'Withdrawal';
       case TransactionKind.deposit:
@@ -284,9 +288,7 @@ class _EntryTile extends StatelessWidget {
       case TransactionKind.cashCount:
         return 'Cash Count';
       case TransactionKind.hotel:
-        return transaction.tagList.isNotEmpty
-            ? 'Hotel ${transaction.tagList.join(' ')}'
-            : 'Hotel';
+        return 'Hotel';
     }
   }
 
@@ -297,39 +299,82 @@ class _EntryTile extends StatelessWidget {
         ListTileTheme.of(context).titleTextStyle ??
         Theme.of(context).textTheme.titleMedium;
     final t = transaction;
-    final detailStyle = TextStyle(color: scheme.outline, fontSize: 13);
+    final detailStyle = TextStyle(color: scheme.primary, fontSize: 15);
+    final detailStyleSmall = TextStyle(color: scheme.primary, fontSize: 13);
     final isOutgoing = t.isSpending;
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign =
         home.currency == null || home.currencyString != t.currency;
     final showStatusBadge = t.isPlanned || (t.isHotel && t.isBooked);
     final hasInfo = t.comment.isNotEmpty;
-    final tags = t.tagList.join(' ');
-    final details = [
-      if (!t.isHotel && t.isBooked) 'Booked',
-      if (t.isSpending || t.isWithdrawal)
-        (t.method.isEmpty ? cashMethod : t.method),
-    ].join(' · ');
+    final paymentMethod = t.isSpending || t.isWithdrawal
+        ? (t.method.isEmpty ? cashMethod : t.method)
+        : null;
+    final details = [if (!t.isHotel && t.isBooked) 'Booked'].join(' · ');
     final subtitle = <Widget>[
       if (t.isHotel) const SizedBox(height: 2),
-      if (hasInfo && tags.isNotEmpty)
-        Text(
-          tags,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: titleStyle,
+      if (t.tagList.isNotEmpty || paymentMethod != null)
+        Wrap(
+          spacing: 4,
+          runSpacing: 2,
+          children: [
+            ...t.tagList.map((tag) {
+              final isSelected = selectedTags.contains(tag);
+              return InkWell(
+                onTap: () => onTagSelected(tag),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? scheme.primaryContainer
+                        : scheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              );
+            }),
+            if (paymentMethod != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  paymentMethod,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
         ),
       if (t.isHotel && t.days > 0)
         Text(
-          t.days == 1 ? '1 day' : '${t.days} days',
-          style: detailStyle.copyWith(fontWeight: FontWeight.w600),
+          t.days == 1 ? '1 night' : '${t.days} nights',
+          style: detailStyleSmall.copyWith(fontWeight: FontWeight.w600),
         ),
       if (details.isNotEmpty)
         Text(
           details,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: detailStyle,
+          style: detailStyleSmall,
         ),
     ];
 
