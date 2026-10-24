@@ -181,7 +181,7 @@ class _NoteListPageState extends State<NoteListPage> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.left,
-                                        textDirection: TextDirection.rtl,
+                                        //textDirection: TextDirection.rtl,
                                         style: TextStyle(
                                           color: Theme.of(context)
                                               .colorScheme
