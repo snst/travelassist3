@@ -8,12 +8,12 @@ import '../utils/transaction_kind.dart';
 import '../widgets/add_payment_method_dialog.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/date_time_picker_tile.dart';
+import '../widgets/days_input.dart';
 import '../widgets/delete_entry_button.dart';
-import '../widgets/reservation_state.dart';
+import '../widgets/expense_options.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
-import '../widgets/days_input.dart';
 import '../widgets/payment_currency_amount_input.dart';
 
 class HotelPage extends StatefulWidget {
@@ -90,13 +90,17 @@ class _HotelFormState extends State<_HotelForm> {
   String _tagDraft = '';
   late DateTime _date;
   late int _days;
-  late bool _isPlanned;
 
   List<String> get _methods => paymentMethodSuggestions(
     transactions: widget.transactions,
     kind: TransactionKind.hotel,
     current: _methodController.text,
   );
+
+  bool get _isBooked => _tags.any((tag) => tag.toLowerCase() == bookedTag);
+  bool get _isInCalendar =>
+      _tags.any((tag) => tag.toLowerCase() == calendarTag);
+  bool get _isPlanned => _tags.any((tag) => tag.toLowerCase() == plannedTag);
 
   @override
   void initState() {
@@ -111,10 +115,9 @@ class _HotelFormState extends State<_HotelForm> {
     _currencyCode =
         t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
-    _tags = t?.tagList ?? [];
+    _tags = t?.tagList ?? [plannedTag, calendarTag];
     _date = t?.date ?? DateTime.now();
     _days = t?.days ?? 1;
-    _isPlanned = t?.planned ?? true;
     if (t == null) _methodController.text = _methods.first;
   }
 
@@ -136,10 +139,33 @@ class _HotelFormState extends State<_HotelForm> {
 
   void _addTag(String tag) {
     final cleaned = tag.trim().replaceAll('#', '').toLowerCase();
-    if (cleaned.isNotEmpty && !_tags.contains(cleaned)) {
+    if (cleaned.isNotEmpty &&
+        !isReservedTransactionTag(cleaned) &&
+        !_tags.contains(cleaned)) {
       setState(() => _tags.add(cleaned));
     }
     _tagDraft = '';
+  }
+
+  void _setBookedTag(bool isBooked) {
+    setState(() {
+      _tags.removeWhere((tag) => tag.toLowerCase() == bookedTag);
+      if (isBooked) _tags.add(bookedTag);
+    });
+  }
+
+  void _setCalendarTag(bool inCalendar) {
+    setState(() {
+      _tags.removeWhere((tag) => tag.toLowerCase() == calendarTag);
+      if (inCalendar) _tags.add(calendarTag);
+    });
+  }
+
+  void _setPlannedTag(bool isPlanned) {
+    setState(() {
+      _tags.removeWhere((tag) => tag.toLowerCase() == plannedTag);
+      if (isPlanned) _tags.add(plannedTag);
+    });
   }
 
   Future<void> _save() async {
@@ -162,7 +188,6 @@ class _HotelFormState extends State<_HotelForm> {
         tags: _tags,
         date: _date,
         days: _days,
-        planned: _isPlanned,
         link: _links.joined,
       );
     } else {
@@ -175,7 +200,6 @@ class _HotelFormState extends State<_HotelForm> {
           tags: _tags.join(','),
           date: _date,
           days: _days,
-          planned: _isPlanned,
           link: _links.joined,
         ),
       );
@@ -243,9 +267,14 @@ class _HotelFormState extends State<_HotelForm> {
               ),
             ],
           ),
-          ReservationState(
+          ExpenseOptions(
             isPlanned: _isPlanned,
-            onPlannedChanged: (value) => setState(() => _isPlanned = value),
+            onPlannedChanged: _setPlannedTag,
+            inCalendar: _isInCalendar,
+            onCalendarChanged: _setCalendarTag,
+            customOptionLabel: 'Booked',
+            customOptionSelected: _isBooked,
+            onCustomOptionChanged: _setBookedTag,
           ),
           LinkEditor(controller: _links),
           FilledButton.icon(

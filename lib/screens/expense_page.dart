@@ -90,8 +90,6 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   String _tagDraft = '';
   late DateTime _date;
   late int _averageDays;
-  late bool _isPlanned;
-  late bool _showInCalendar;
   Future<void>? _gpsLocationCapture;
   bool _gpsLocationCaptureStarted = false;
 
@@ -100,6 +98,10 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     kind: TransactionKind.expense,
     current: _methodController.text,
   );
+
+  bool get _isInCalendar =>
+      _tags.any((tag) => tag.toLowerCase() == calendarTag);
+  bool get _isPlanned => _tags.any((tag) => tag.toLowerCase() == plannedTag);
 
   @override
   void initState() {
@@ -117,8 +119,6 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
     _averageDays = t?.days ?? 1;
-    _isPlanned = t?.planned ?? false;
-    _showInCalendar = t?.showInCalendar ?? false;
     if (t == null) _methodController.text = _methods.first;
   }
 
@@ -156,10 +156,26 @@ class _ExpenseFormState extends State<_ExpenseForm> {
 
   void _addTag(String tag) {
     final cleaned = tag.trim().replaceAll('#', '').toLowerCase();
-    if (cleaned.isNotEmpty && !_tags.contains(cleaned)) {
+    if (cleaned.isNotEmpty &&
+        !isReservedTransactionTag(cleaned) &&
+        !_tags.contains(cleaned)) {
       setState(() => _tags.add(cleaned));
     }
     _tagDraft = '';
+  }
+
+  void _setCalendarTag(bool inCalendar) {
+    setState(() {
+      _tags.removeWhere((tag) => tag.toLowerCase() == calendarTag);
+      if (inCalendar) _tags.add(calendarTag);
+    });
+  }
+
+  void _setPlannedTag(bool isPlanned) {
+    setState(() {
+      _tags.removeWhere((tag) => tag.toLowerCase() == plannedTag);
+      if (isPlanned) _tags.add(plannedTag);
+    });
   }
 
   Future<void> _save() async {
@@ -184,9 +200,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         tags: _tags,
         date: _date,
         days: _averageDays,
-        planned: _isPlanned,
         link: _links.joined,
-        showInCalendar: _showInCalendar,
       );
     } else {
       await widget.database.updateTransactionEntry(
@@ -198,9 +212,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           tags: _tags.join(','),
           date: _date,
           days: _averageDays,
-          planned: _isPlanned,
           link: _links.joined,
-          showInCalendar: _showInCalendar,
         ),
       );
     }
@@ -270,10 +282,10 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           ExpenseOptions(
             isPlanned: _isPlanned,
             averageDays: _averageDays,
-            inCalendar: _showInCalendar,
-            onPlannedChanged: (value) => setState(() => _isPlanned = value),
+            inCalendar: _isInCalendar,
+            onPlannedChanged: _setPlannedTag,
             onAverageDaysChanged: (v) => setState(() => _averageDays = v),
-            onCalendarChanged: (v) => setState(() => _showInCalendar = v),
+            onCalendarChanged: _setCalendarTag,
           ),
           LinkEditor(controller: _links),
           FilledButton.icon(

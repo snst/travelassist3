@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../database/database.dart';
 import '../utils/date_format.dart';
-import '../widgets/hotel_state_badge.dart';
-import 'hotel_page.dart';
+import 'expenses_list_page.dart';
 import 'transaction_navigation.dart';
 
 const _rowHeight = 64.0;
@@ -21,6 +20,8 @@ class _Booking {
   _Booking(this.transaction, this.start);
 
   bool get isHotel => transaction.isHotel;
+  bool get isBooked =>
+      transaction.tagList.any((tag) => tag.toLowerCase() == bookedTag);
   int get nights => transaction.days < 1 ? 1 : transaction.days;
   int get calendarDays => isHotel ? nights + 1 : 1;
   int get endDay => startDay + (isHotel ? nights : 1);
@@ -28,13 +29,14 @@ class _Booking {
   String get title {
     final t = transaction;
     if (t.comment.isNotEmpty) return t.comment;
-    if (t.tagList.isNotEmpty) return t.tagList.join(' ');
+    final visibleTags = t.tagList.where((tag) => !isReservedTransactionTag(tag));
+    if (visibleTags.isNotEmpty) return visibleTags.join(' ');
     return isHotel ? 'Hotel' : 'Expense';
   }
 }
 
-/// Lists hotel bookings and selected expenses on a vertical calendar.
-/// Hotels cover their stay; expenses appear only on their transaction date.
+/// Lists transactions tagged for the calendar.
+/// Hotels cover their stay; other transactions appear on their transaction date.
 class CalendarPage extends StatelessWidget {
   final AppDatabase database;
 
@@ -48,10 +50,17 @@ class CalendarPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
-            tooltip: 'Add Hotel',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => HotelPage(database: database)),
+            tooltip: 'View Expenses',
+            onPressed: () => Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => ExpensesListPage(database: database),
+              ),
             ),
+            icon: const Icon(Icons.receipt_long),
+          ),
+          IconButton(
+            tooltip: 'Add Entry',
+            onPressed: () => showNewEntryPicker(context, database),
             icon: const Icon(Icons.add),
           ),
         ],
@@ -63,7 +72,9 @@ class CalendarPage extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final entries = snapshot.data!
-              .where((t) => t.isHotel || (t.isExpense && t.showInCalendar))
+              .where(
+                (t) => t.tagList.any((tag) => tag.toLowerCase() == calendarTag),
+              )
               .toList();
           if (entries.isEmpty) {
             return const Center(
@@ -358,10 +369,20 @@ class _BookingBar extends StatelessWidget {
 
   const _BookingBar({required this.booking, required this.onTap});
 
+  List<Widget> _statusIcons(Color color) => [
+    if (booking.transaction.isPlanned) ...[
+      Icon(Icons.schedule, size: 14, color: color),
+      const SizedBox(width: 3),
+    ],
+    if (booking.isBooked) ...[
+      Icon(Icons.check, size: 14, color: color),
+      const SizedBox(width: 3),
+    ],
+  ];
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final t = booking.transaction;
     final background = booking.isHotel
         ? scheme.primaryContainer
         : scheme.tertiaryContainer;
@@ -394,6 +415,7 @@ class _BookingBar extends StatelessWidget {
                   children: [
                     Row(
                       children: [
+                        ..._statusIcons(expenseForeground),
                         Expanded(
                           child: Text(
                             nightsStr,
@@ -411,10 +433,8 @@ class _BookingBar extends StatelessWidget {
                             size: 14,
                             color: scheme.error,
                           ),
-                          const SizedBox(width: 4),
                         ],
                         const SizedBox(width: 4),
-                        if (t.isPlanned) const PlannedBadge(compact: true),
                       ],
                     ),
                     Text(
@@ -439,13 +459,19 @@ class _BookingBar extends StatelessWidget {
                               .clamp(1, 1000)
                               .toInt();
 
-                          return Text(
-                            booking.title,
-                            maxLines: maxLines,
-                            overflow: TextOverflow.ellipsis,
-                            style: infoStyle.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  booking.title,
+                                  maxLines: maxLines,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: infoStyle.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -454,11 +480,7 @@ class _BookingBar extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 14,
-                      color: expenseForeground,
-                    ),
+                    ..._statusIcons(expenseForeground),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(

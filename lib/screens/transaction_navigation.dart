@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../database/database.dart';
-import '../utils/transaction_kind.dart';
 import 'cash_count_page.dart';
 import 'deposit_page.dart';
 import 'expense_page.dart';
 import 'hotel_page.dart';
 import 'withdrawal_page.dart';
+import '../widgets/new_entry_picker.dart';
 
 /// The entry page for [kind]; edits [transaction] when given, otherwise adds a new entry.
 Widget transactionPage(
@@ -45,25 +45,13 @@ void showNewEntryPicker(BuildContext context, AppDatabase database) {
   final navigator = Navigator.of(context);
   showModalBottomSheet<void>(
     context: context,
-    builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final kind in TransactionKind.values)
-            ListTile(
-              leading: Icon(transactionIcon(kind)),
-              title: Text(transactionLabel(kind)),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                navigator.push(
-                  MaterialPageRoute(
-                    builder: (_) => transactionPage(database, kind),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
+    builder: (sheetContext) => NewEntryPicker(
+      onSelected: (kind) {
+        Navigator.of(sheetContext).pop();
+        navigator.push(
+          MaterialPageRoute(builder: (_) => transactionPage(database, kind)),
+        );
+      },
     ),
   );
 }

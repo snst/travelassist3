@@ -410,15 +410,23 @@ class HomePage extends StatelessWidget {
       final json = utf8.decode(await file.readAsBytes());
       if (!context.mounted) return;
       final existingCount = await database.countContent(content);
+      final existingCurrencyCount = content == DatabaseContent.transactions
+          ? await database.countContent(DatabaseContent.currencies)
+          : 0;
       var deleteExisting = false;
-      if (existingCount > 0) {
+      if (existingCount + existingCurrencyCount > 0) {
         if (!context.mounted) return;
+        final existingItems = [
+          if (existingCount > 0)
+            '$existingCount ${content.label.toLowerCase()}',
+          if (existingCurrencyCount > 0) '$existingCurrencyCount currencies',
+        ].join(' and ');
         final choice = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: Text('Import ${content.label}?'),
             content: Text(
-              'There are already $existingCount ${content.label.toLowerCase()}. '
+              'There are already $existingItems. '
               'Delete the existing items before importing?',
             ),
             actions: [
@@ -617,6 +625,7 @@ class _DatabaseContentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canImportExport = content != DatabaseContent.currencies;
     return Row(
       children: [
         Expanded(child: Text(content.label)),
@@ -625,16 +634,18 @@ class _DatabaseContentRow extends StatelessWidget {
           onPressed: onDelete,
           icon: const Icon(Icons.delete_outline),
         ),
-        IconButton(
-          tooltip: 'Import ${content.label}',
-          onPressed: onImport,
-          icon: const Icon(Icons.file_upload_outlined),
-        ),
-        IconButton(
-          tooltip: 'Export ${content.label}',
-          onPressed: onExport,
-          icon: const Icon(Icons.file_download_outlined),
-        ),
+        if (canImportExport) ...[
+          IconButton(
+            tooltip: 'Import ${content.label}',
+            onPressed: onImport,
+            icon: const Icon(Icons.file_open),
+          ),
+          IconButton(
+            tooltip: 'Export ${content.label}',
+            onPressed: onExport,
+            icon: const Icon(Icons.save),
+          ),
+        ],
       ],
     );
   }

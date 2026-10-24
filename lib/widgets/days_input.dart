@@ -5,17 +5,16 @@ import 'package:flutter/material.dart';
 class DaysInput extends StatelessWidget {
   final int days;
   final ValueChanged<int> onChanged;
+  final String unit;
 
   const DaysInput({
     super.key,
     required this.days,
     required this.onChanged,
+    this.unit = 'night',
   });
 
-  String get _summary => switch (days) {
-        1 => '1 night',
-        _ => '$days nights',
-      };
+  String get _summary => '$days ${days == 1 ? unit : '${unit}s'}';
 
   @override
   Widget build(BuildContext context) {

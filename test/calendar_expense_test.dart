@@ -12,7 +12,7 @@ void main() {
     });
   });
 
-  test('Calendar visibility defaults off and persists when enabled', () async {
+  test('Calendar tag defaults off and persists when enabled', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     try {
       final hiddenId = await database.addTransaction(
@@ -24,22 +24,29 @@ void main() {
         kind: TransactionKind.expense,
         amount: 12,
         currency: 'EUR',
-        showInCalendar: true,
+        tags: const ['calendar'],
       );
 
-      final transactions = await database.select(database.moneyTransactions).get();
+      final transactions = await database
+          .select(database.moneyTransactions)
+          .get();
       expect(
-        transactions.singleWhere((transaction) => transaction.id == hiddenId)
-            .showInCalendar,
+        transactions
+            .singleWhere((transaction) => transaction.id == hiddenId)
+            .tagList
+            .contains('calendar'),
         isFalse,
       );
       expect(
-        transactions.singleWhere((transaction) => transaction.id == visibleId)
-            .showInCalendar,
+        transactions
+            .singleWhere((transaction) => transaction.id == visibleId)
+            .tagList
+            .contains('calendar'),
         isTrue,
       );
     } finally {
       await database.close();
     }
   });
+
 }

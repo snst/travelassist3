@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../database/database.dart';
 import '../widgets/large_text_dialog.dart';
 import '../widgets/tag_filter_bar.dart';
+import 'note_actions.dart';
 import 'note_item_page.dart';
 
 class NoteListPage extends StatefulWidget {
@@ -177,7 +178,9 @@ class _NoteListPageState extends State<NoteListPage> {
                                   children: [
                                     ...note.linkList.map(
                                       (link) => Text(
-                                        link,
+                                        link.startsWith('https://')
+                                            ? link.substring('https://'.length)
+                                            : link,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.left,
@@ -245,6 +248,8 @@ class _NoteListPageState extends State<NoteListPage> {
                                       context,
                                       note.comment,
                                       emptyMessage: 'No info entered.',
+                                      links: note.linkList,
+                                      onOpenLink: openNoteLink,
                                     );
                                   },
                                 ),

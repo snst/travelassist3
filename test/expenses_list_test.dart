@@ -37,7 +37,7 @@ void main() {
       amount: 12,
       currency: 'EUR',
       comment: info,
-      tags: ['food', 'lunch'],
+      tags: ['food', 'lunch', 'calendar'],
       method: 'Visa',
     );
 
@@ -54,7 +54,7 @@ void main() {
     expect(title.maxLines, 1);
     expect(title.overflow, TextOverflow.ellipsis);
     final tagWrap = subtitle.children.first as Wrap;
-    expect(tagWrap.children.whereType<InkWell>().length, 2);
+    expect(tagWrap.children.whereType<InkWell>().length, 3);
     expect(
       find.descendant(of: find.byType(Wrap).first, matching: find.text('Visa')),
       findsOneWidget,
@@ -70,6 +70,46 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      find.descendant(
+        of: find.byType(Wrap).first,
+        matching: find.text('calendar'),
+      ),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('Planned transactions use a blue outline instead of a badge', (
+    tester,
+  ) async {
+    await database.addTransaction(
+      kind: TransactionKind.expense,
+      amount: 12,
+      currency: 'EUR',
+      tags: ['planned'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: ExpensesListPage(database: database)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('PLANNED'), findsNothing);
+    final avatar = find.descendant(
+      of: find.byType(ListTile).first,
+      matching: find.byType(CircleAvatar),
+    );
+    final outline = find.ancestor(of: avatar, matching: find.byType(Container));
+    final decoration =
+        tester.widget<Container>(outline.first).decoration! as BoxDecoration;
+    final border = decoration.border! as Border;
+    expect(
+      border.top.color,
+      Theme.of(tester.element(avatar.first)).colorScheme.primary,
+    );
+
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 1));
   });

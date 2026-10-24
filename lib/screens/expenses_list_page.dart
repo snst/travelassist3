@@ -5,9 +5,9 @@ import '../calculator/currency_value.dart';
 import '../database/database.dart';
 import '../utils/date_format.dart';
 import '../utils/transaction_kind.dart';
-import '../widgets/hotel_state_badge.dart';
 import '../widgets/tag_filter_bar.dart';
 import 'balance_page.dart';
+import 'calendar_page.dart';
 import 'transaction_navigation.dart';
 
 class ExpensesListPage extends StatelessWidget {
@@ -32,12 +32,18 @@ class ExpensesListPage extends StatelessWidget {
                 title: const Text('Expenses'),
                 backgroundColor: Theme.of(context).colorScheme.inversePrimary,
                 actions: [
-                  if (!loading && currencies.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      tooltip: 'Add Entry',
-                      onPressed: () => showNewEntryPicker(context, database),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_month),
+                    tooltip: 'View Calendar',
+                    onPressed: () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CalendarPage(database: database),
+                        ),
+                      );
+                    },
+                  ),
                   IconButton(
                     icon: const Icon(Icons.pie_chart),
                     tooltip: 'View Balance',
@@ -49,6 +55,12 @@ class ExpensesListPage extends StatelessWidget {
                       );
                     },
                   ),
+                  if (!loading && currencies.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      tooltip: 'Add Entry',
+                      onPressed: () => showNewEntryPicker(context, database),
+                    ),
                 ],
               ),
               body: loading
@@ -305,7 +317,6 @@ class _EntryTile extends StatelessWidget {
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign =
         home.currency == null || home.currencyString != t.currency;
-    final showStatusBadge = t.isPlanned;
     final hasInfo = t.comment.isNotEmpty;
     final paymentMethod = t.isSpending || t.isWithdrawal
         ? (t.method.isEmpty ? cashMethod : t.method)
@@ -385,22 +396,20 @@ class _EntryTile extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           onTap: onTap,
-          leading: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                backgroundColor: t.isHotel
-                    ? scheme.secondaryContainer
-                    : scheme.surfaceContainerHigh,
-                child: Icon(t.isHotel ? Icons.hotel : transactionIcon(t.type)),
-              ),
-              if (showStatusBadge)
-                Positioned(
-                  right: -12,
-                  bottom: -4,
-                  child: const PlannedBadge(compact: true),
-                ),
-            ],
+          leading: Container(
+            padding: t.isPlanned ? const EdgeInsets.all(2) : EdgeInsets.zero,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: t.isPlanned
+                  ? Border.all(color: scheme.primary, width: 2)
+                  : null,
+            ),
+            child: CircleAvatar(
+              backgroundColor: t.isHotel
+                  ? scheme.secondaryContainer
+                  : scheme.surfaceContainerHigh,
+              child: Icon(t.isHotel ? Icons.hotel : transactionIcon(t.type)),
+            ),
           ),
           title: Text(
             hasInfo ? t.comment : _title,

@@ -55,50 +55,54 @@ void main() {
           of: find.byType(Dialog),
           matching: find.textContaining('https://example.com/trip'),
         ),
-        findsNothing,
+        findsOneWidget,
       );
+      expect(find.byTooltip('Open Link'), findsOneWidget);
+      expect(find.text('example.com/trip'), findsOneWidget);
       expect(find.text('https://example.com/trip'), findsOneWidget);
       expect(find.byType(Dialog), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(seconds: 1));
     });
 
-    testWidgets(
-      'Note list shows every link in secondary color below a smaller comment',
-      (WidgetTester tester) async {
-        const comment = 'Paris trip info';
-        const links = [
-          'https://example.com/trip',
-          'https://example.com/hotel',
-          'geo:48.8566,2.3522',
-        ];
-        await database.addNote(comment: comment, link: links.join('\t'));
+    testWidgets('Note list removes https from links below a smaller comment', (
+      WidgetTester tester,
+    ) async {
+      const comment = 'Paris trip info';
+      const links = [
+        'https://example.com/trip',
+        'https://example.com/hotel',
+        'geo:48.8566,2.3522',
+      ];
+      await database.addNote(comment: comment, link: links.join('\t'));
 
-        const secondaryColor = Colors.purple;
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: ThemeData(
-              colorScheme: const ColorScheme.light(secondary: secondaryColor),
-            ),
-            home: NoteListPage(database: database),
+      const secondaryColor = Colors.purple;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            colorScheme: const ColorScheme.light(secondary: secondaryColor),
           ),
-        );
-        await tester.pumpAndSettle();
+          home: NoteListPage(database: database),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        final commentWidget = tester.widget<Text>(find.text(comment));
-        expect(commentWidget.style?.fontSize, lessThan(16));
-        for (final link in links) {
-          final linkWidget = tester.widget<Text>(find.text(link));
-          expect(linkWidget.style?.color, secondaryColor);
-          expect(linkWidget.maxLines, 1);
-          expect(linkWidget.overflow, TextOverflow.ellipsis);
-          expect(linkWidget.textDirection, TextDirection.rtl);
-        }
+      final commentWidget = tester.widget<Text>(find.text(comment));
+      expect(commentWidget.style?.fontSize, lessThan(16));
+      for (final link in links) {
+        final displayedLink = link.startsWith('https://')
+            ? link.substring('https://'.length)
+            : link;
+        final linkWidget = tester.widget<Text>(find.text(displayedLink));
+        expect(linkWidget.style?.color, secondaryColor);
+        expect(linkWidget.maxLines, 1);
+        expect(linkWidget.overflow, TextOverflow.ellipsis);
+        expect(linkWidget.textDirection, TextDirection.rtl);
+      }
 
-        await tester.pumpWidget(const SizedBox.shrink());
-        await tester.pump(const Duration(seconds: 1));
-      },
-    );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    });
 
     test('Note.link stores multiple tab-separated links and NoteHelpers parses them correctly', () async {
       const link1 = 'https://maps.google.com/?q=Hotel';

@@ -53,19 +53,16 @@ class MoneyTransactions extends Table {
   RealColumn get amount => real()();
   TextColumn get currency => text()(); // Currency.shortName
   TextColumn get method =>
-      text().withDefault(const Constant(''))(); // empty or 'Cash' means cash
+      text().withDefault(const Constant(''))(); // empty or 'cash' means cash
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
   DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
   // Number of days the entry covers: for expenses the days it counts in the daily average
   // (0 = not included, 1 = default), for e.g. a hotel booking its length.
   IntColumn get days => integer().withDefault(const Constant(1))();
-  BoolColumn get planned => boolean().withDefault(const Constant(false))();
   TextColumn get link => text().withDefault(
     const Constant(''),
   )(); // tab separated, like Notes.link
-  BoolColumn get showInCalendar =>
-      boolean().withDefault(const Constant(false))();
 }
 
 @DriftDatabase(tables: [Currencies, TodoItems, Notes, MoneyTransactions])
@@ -75,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -84,18 +81,8 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (m, from, to) async {
-        if (from < 10) {
-          await m.addColumn(
-            moneyTransactions,
-            moneyTransactions.showInCalendar,
-          );
-        }
-        if (from < 11) {
-          await m.addColumn(moneyTransactions, moneyTransactions.planned);
-          await customStatement(
-            'UPDATE money_transactions SET planned = state = 0',
-          );
-          // Rebuild the table to remove the legacy state column.
+        if (from < 13) {
+          // Drop legacy status columns without converting their values to tags.
           // ignore: experimental_member_use
           await m.alterTable(TableMigration(moneyTransactions));
         }
@@ -326,9 +313,7 @@ class AppDatabase extends _$AppDatabase {
     List<String> tags = const [],
     DateTime? date,
     int days = 1,
-    bool planned = false,
     String link = '',
-    bool showInCalendar = false,
   }) {
     return into(moneyTransactions).insert(
       MoneyTransactionsCompanion.insert(
@@ -342,9 +327,7 @@ class AppDatabase extends _$AppDatabase {
         ),
         date: Value(date ?? DateTime.now()),
         days: Value(days),
-        planned: Value(planned),
         link: Value(link),
-        showInCalendar: Value(showInCalendar),
       ),
     );
   }
@@ -394,6 +377,10 @@ class AppDatabase extends _$AppDatabase {
       'content': content.name,
       'exportedAt': DateTime.now().toIso8601String(),
       'records': records,
+      if (content == DatabaseContent.transactions)
+        'currencies': (await select(
+          currencies,
+        ).get()).map((row) => row.toJson()).toList(),
     });
   }
 
@@ -406,7 +393,10 @@ class AppDatabase extends _$AppDatabase {
     if (decoded is! Map<String, dynamic> ||
         decoded['formatVersion'] != 1 ||
         decoded['content'] != content.name ||
-        decoded['records'] is! List) {
+        decoded['records'] is! List ||
+        (content == DatabaseContent.transactions &&
+            decoded.containsKey('currencies') &&
+            decoded['currencies'] is! List)) {
       throw FormatException('The file is not a valid ${content.label} export.');
     }
 
@@ -419,24 +409,7 @@ class AppDatabase extends _$AppDatabase {
         );
         await transaction(() async {
           final preserveIds = await _prepareImport(content, deleteExisting);
-          var hasHomeCurrency = (await select(
-            currencies,
-          ).get()).any((currency) => currency.isHome);
-          for (final row in rows) {
-            final isHome = row.isHome && !hasHomeCurrency;
-            if (isHome) hasHomeCurrency = true;
-            final currency = row.copyWith(isHome: isHome);
-            await into(currencies).insert(
-              preserveIds
-                  ? currency.toCompanion(false)
-                  : CurrenciesCompanion.insert(
-                      name: currency.name,
-                      shortName: currency.shortName,
-                      rate: currency.rate,
-                      isHome: Value(currency.isHome),
-                    ),
-            );
-          }
+          await _insertCurrencyRows(rows, preserveIds: preserveIds);
         });
       case DatabaseContent.checklist:
         final rows = _parseRecords(
@@ -446,7 +419,28 @@ class AppDatabase extends _$AppDatabase {
         );
         await transaction(() async {
           final preserveIds = await _prepareImport(content, deleteExisting);
+          final existingItems = (await select(todoItems).get())
+              .map(
+                (item) => (
+                  item.name,
+                  item.category,
+                  item.comment,
+                  item.quantity,
+                  item.used,
+                  item.state,
+                ),
+              )
+              .toSet();
           for (final row in rows) {
+            final key = (
+              row.name,
+              row.category,
+              row.comment,
+              row.quantity,
+              row.used,
+              row.state,
+            );
+            if (!existingItems.add(key)) continue;
             await into(todoItems).insert(
               preserveIds
                   ? row.toCompanion(false)
@@ -465,7 +459,11 @@ class AppDatabase extends _$AppDatabase {
         final rows = _parseRecords(decoded['records'], Note.fromJson, content);
         await transaction(() async {
           final preserveIds = await _prepareImport(content, deleteExisting);
+          final existingNotes = (await select(
+            notes,
+          ).get()).map((note) => (note.comment, note.link, note.tags)).toSet();
           for (final row in rows) {
+            if (!existingNotes.add((row.comment, row.link, row.tags))) continue;
             await into(notes).insert(
               preserveIds
                   ? row.toCompanion(false)
@@ -479,17 +477,70 @@ class AppDatabase extends _$AppDatabase {
           }
         });
       case DatabaseContent.transactions:
-        final records = (decoded['records'] as List<dynamic>).map((record) {
-          if (record is! Map<String, dynamic>) return record;
-          if (record.containsKey('planned') || !record.containsKey('state')) {
-            return record;
-          }
-          return {...record, 'planned': record['state'] == 0};
-        }).toList();
-        final rows = _parseRecords(records, MoneyTransaction.fromJson, content);
+        final includesCurrencies = decoded.containsKey('currencies');
+        final currencyRows = includesCurrencies
+            ? _parseRecords(
+                decoded['currencies'],
+                Currency.fromJson,
+                DatabaseContent.currencies,
+              )
+            : <Currency>[];
+        final rows = _parseRecords(
+          decoded['records'],
+          MoneyTransaction.fromJson,
+          content,
+        );
         await transaction(() async {
+          if (includesCurrencies) {
+            final preserveCurrencyIds = await _prepareImport(
+              DatabaseContent.currencies,
+              deleteExisting,
+            );
+            final existingCodes = (await select(
+              currencies,
+            ).get()).map((currency) => currency.shortName).toSet();
+            final currenciesToImport = deleteExisting
+                ? currencyRows
+                : currencyRows
+                      .where(
+                        (currency) =>
+                            !existingCodes.contains(currency.shortName),
+                      )
+                      .toList();
+            await _insertCurrencyRows(
+              currenciesToImport,
+              preserveIds: preserveCurrencyIds,
+            );
+          }
           final preserveIds = await _prepareImport(content, deleteExisting);
+          final existingTransactions = (await select(moneyTransactions).get())
+              .map(
+                (transaction) => (
+                  transaction.kind,
+                  transaction.amount,
+                  transaction.currency,
+                  transaction.method,
+                  transaction.comment,
+                  transaction.tags,
+                  transaction.date,
+                  transaction.days,
+                  transaction.link,
+                ),
+              )
+              .toSet();
           for (final row in rows) {
+            final key = (
+              row.kind,
+              row.amount,
+              row.currency,
+              row.method,
+              row.comment,
+              row.tags,
+              row.date,
+              row.days,
+              row.link,
+            );
+            if (!existingTransactions.add(key)) continue;
             await into(moneyTransactions).insert(
               preserveIds
                   ? row.toCompanion(false)
@@ -502,13 +553,35 @@ class AppDatabase extends _$AppDatabase {
                       tags: Value(row.tags),
                       date: Value(row.date),
                       days: Value(row.days),
-                      planned: Value(row.planned),
                       link: Value(row.link),
-                      showInCalendar: Value(row.showInCalendar),
                     ),
             );
           }
         });
+    }
+  }
+
+  Future<void> _insertCurrencyRows(
+    List<Currency> rows, {
+    required bool preserveIds,
+  }) async {
+    var hasHomeCurrency = (await select(
+      currencies,
+    ).get()).any((currency) => currency.isHome);
+    for (final row in rows) {
+      final isHome = row.isHome && !hasHomeCurrency;
+      if (isHome) hasHomeCurrency = true;
+      final currency = row.copyWith(isHome: isHome);
+      await into(currencies).insert(
+        preserveIds
+            ? currency.toCompanion(false)
+            : CurrenciesCompanion.insert(
+                name: currency.name,
+                shortName: currency.shortName,
+                rate: currency.rate,
+                isHome: Value(currency.isHome),
+              ),
+      );
     }
   }
 
@@ -587,14 +660,25 @@ enum DatabaseContent {
 // The index is stored in the database: only append new kinds.
 enum TransactionKind { expense, withdrawal, cashCount, deposit, hotel }
 
-const cashMethod = 'Cash';
+const cashMethod = 'cash';
+const plannedTag = 'planned';
+const bookedTag = 'booked';
+const calendarTag = 'calendar';
+const starTag = '⭐';
+const reservedTransactionTags = {plannedTag, bookedTag, calendarTag};
+
+bool isReservedTransactionTag(String tag) =>
+    reservedTransactionTags.contains(tag.trim().toLowerCase());
+
+bool isTagEditorHiddenTag(String tag) =>
+    isReservedTransactionTag(tag) || tag.trim() == starTag;
 
 extension MoneyTransactionHelpers on MoneyTransaction {
   TransactionKind get type => kind >= 0 && kind < TransactionKind.values.length
       ? TransactionKind.values[kind]
       : TransactionKind.expense;
 
-  bool get isPlanned => planned;
+  bool get isPlanned => tagList.any((tag) => tag.toLowerCase() == plannedTag);
 
   bool get isExpense => type == TransactionKind.expense;
   bool get isWithdrawal => type == TransactionKind.withdrawal;

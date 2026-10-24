@@ -35,12 +35,10 @@ void main() {
       currency: currency,
       method: method,
       comment: '',
-      tags: '',
+      tags: planned ? 'planned' : '',
       date: date ?? DateTime(2026, 5, 1, 12),
       days: days,
-      planned: planned,
       link: '',
-      showInCalendar: false,
     );
   }
 

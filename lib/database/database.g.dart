@@ -1210,21 +1210,6 @@ class $MoneyTransactionsTable extends MoneyTransactions
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
-  static const VerificationMeta _plannedMeta = const VerificationMeta(
-    'planned',
-  );
-  @override
-  late final GeneratedColumn<bool> planned = GeneratedColumn<bool>(
-    'planned',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("planned" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
   static const VerificationMeta _linkMeta = const VerificationMeta('link');
   @override
   late final GeneratedColumn<String> link = GeneratedColumn<String>(
@@ -1234,21 +1219,6 @@ class $MoneyTransactionsTable extends MoneyTransactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
-  );
-  static const VerificationMeta _showInCalendarMeta = const VerificationMeta(
-    'showInCalendar',
-  );
-  @override
-  late final GeneratedColumn<bool> showInCalendar = GeneratedColumn<bool>(
-    'show_in_calendar',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("show_in_calendar" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -1261,9 +1231,7 @@ class $MoneyTransactionsTable extends MoneyTransactions
     tags,
     date,
     days,
-    planned,
     link,
-    showInCalendar,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1332,25 +1300,10 @@ class $MoneyTransactionsTable extends MoneyTransactions
         days.isAcceptableOrUnknown(data['days']!, _daysMeta),
       );
     }
-    if (data.containsKey('planned')) {
-      context.handle(
-        _plannedMeta,
-        planned.isAcceptableOrUnknown(data['planned']!, _plannedMeta),
-      );
-    }
     if (data.containsKey('link')) {
       context.handle(
         _linkMeta,
         link.isAcceptableOrUnknown(data['link']!, _linkMeta),
-      );
-    }
-    if (data.containsKey('show_in_calendar')) {
-      context.handle(
-        _showInCalendarMeta,
-        showInCalendar.isAcceptableOrUnknown(
-          data['show_in_calendar']!,
-          _showInCalendarMeta,
-        ),
       );
     }
     return context;
@@ -1398,17 +1351,9 @@ class $MoneyTransactionsTable extends MoneyTransactions
         DriftSqlType.int,
         data['${effectivePrefix}days'],
       )!,
-      planned: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}planned'],
-      )!,
       link: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}link'],
-      )!,
-      showInCalendar: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}show_in_calendar'],
       )!,
     );
   }
@@ -1430,9 +1375,7 @@ class MoneyTransaction extends DataClass
   final String tags;
   final DateTime date;
   final int days;
-  final bool planned;
   final String link;
-  final bool showInCalendar;
   const MoneyTransaction({
     required this.id,
     required this.kind,
@@ -1443,9 +1386,7 @@ class MoneyTransaction extends DataClass
     required this.tags,
     required this.date,
     required this.days,
-    required this.planned,
     required this.link,
-    required this.showInCalendar,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1459,9 +1400,7 @@ class MoneyTransaction extends DataClass
     map['tags'] = Variable<String>(tags);
     map['date'] = Variable<DateTime>(date);
     map['days'] = Variable<int>(days);
-    map['planned'] = Variable<bool>(planned);
     map['link'] = Variable<String>(link);
-    map['show_in_calendar'] = Variable<bool>(showInCalendar);
     return map;
   }
 
@@ -1476,9 +1415,7 @@ class MoneyTransaction extends DataClass
       tags: Value(tags),
       date: Value(date),
       days: Value(days),
-      planned: Value(planned),
       link: Value(link),
-      showInCalendar: Value(showInCalendar),
     );
   }
 
@@ -1497,9 +1434,7 @@ class MoneyTransaction extends DataClass
       tags: serializer.fromJson<String>(json['tags']),
       date: serializer.fromJson<DateTime>(json['date']),
       days: serializer.fromJson<int>(json['days']),
-      planned: serializer.fromJson<bool>(json['planned']),
       link: serializer.fromJson<String>(json['link']),
-      showInCalendar: serializer.fromJson<bool>(json['showInCalendar']),
     );
   }
   @override
@@ -1515,9 +1450,7 @@ class MoneyTransaction extends DataClass
       'tags': serializer.toJson<String>(tags),
       'date': serializer.toJson<DateTime>(date),
       'days': serializer.toJson<int>(days),
-      'planned': serializer.toJson<bool>(planned),
       'link': serializer.toJson<String>(link),
-      'showInCalendar': serializer.toJson<bool>(showInCalendar),
     };
   }
 
@@ -1531,9 +1464,7 @@ class MoneyTransaction extends DataClass
     String? tags,
     DateTime? date,
     int? days,
-    bool? planned,
     String? link,
-    bool? showInCalendar,
   }) => MoneyTransaction(
     id: id ?? this.id,
     kind: kind ?? this.kind,
@@ -1544,9 +1475,7 @@ class MoneyTransaction extends DataClass
     tags: tags ?? this.tags,
     date: date ?? this.date,
     days: days ?? this.days,
-    planned: planned ?? this.planned,
     link: link ?? this.link,
-    showInCalendar: showInCalendar ?? this.showInCalendar,
   );
   MoneyTransaction copyWithCompanion(MoneyTransactionsCompanion data) {
     return MoneyTransaction(
@@ -1559,11 +1488,7 @@ class MoneyTransaction extends DataClass
       tags: data.tags.present ? data.tags.value : this.tags,
       date: data.date.present ? data.date.value : this.date,
       days: data.days.present ? data.days.value : this.days,
-      planned: data.planned.present ? data.planned.value : this.planned,
       link: data.link.present ? data.link.value : this.link,
-      showInCalendar: data.showInCalendar.present
-          ? data.showInCalendar.value
-          : this.showInCalendar,
     );
   }
 
@@ -1579,9 +1504,7 @@ class MoneyTransaction extends DataClass
           ..write('tags: $tags, ')
           ..write('date: $date, ')
           ..write('days: $days, ')
-          ..write('planned: $planned, ')
-          ..write('link: $link, ')
-          ..write('showInCalendar: $showInCalendar')
+          ..write('link: $link')
           ..write(')'))
         .toString();
   }
@@ -1597,9 +1520,7 @@ class MoneyTransaction extends DataClass
     tags,
     date,
     days,
-    planned,
     link,
-    showInCalendar,
   );
   @override
   bool operator ==(Object other) =>
@@ -1614,9 +1535,7 @@ class MoneyTransaction extends DataClass
           other.tags == this.tags &&
           other.date == this.date &&
           other.days == this.days &&
-          other.planned == this.planned &&
-          other.link == this.link &&
-          other.showInCalendar == this.showInCalendar);
+          other.link == this.link);
 }
 
 class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
@@ -1629,9 +1548,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
   final Value<String> tags;
   final Value<DateTime> date;
   final Value<int> days;
-  final Value<bool> planned;
   final Value<String> link;
-  final Value<bool> showInCalendar;
   const MoneyTransactionsCompanion({
     this.id = const Value.absent(),
     this.kind = const Value.absent(),
@@ -1642,9 +1559,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
     this.days = const Value.absent(),
-    this.planned = const Value.absent(),
     this.link = const Value.absent(),
-    this.showInCalendar = const Value.absent(),
   });
   MoneyTransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1656,9 +1571,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     this.tags = const Value.absent(),
     this.date = const Value.absent(),
     this.days = const Value.absent(),
-    this.planned = const Value.absent(),
     this.link = const Value.absent(),
-    this.showInCalendar = const Value.absent(),
   }) : amount = Value(amount),
        currency = Value(currency);
   static Insertable<MoneyTransaction> custom({
@@ -1671,9 +1584,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Expression<String>? tags,
     Expression<DateTime>? date,
     Expression<int>? days,
-    Expression<bool>? planned,
     Expression<String>? link,
-    Expression<bool>? showInCalendar,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1685,9 +1596,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       if (tags != null) 'tags': tags,
       if (date != null) 'date': date,
       if (days != null) 'days': days,
-      if (planned != null) 'planned': planned,
       if (link != null) 'link': link,
-      if (showInCalendar != null) 'show_in_calendar': showInCalendar,
     });
   }
 
@@ -1701,9 +1610,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     Value<String>? tags,
     Value<DateTime>? date,
     Value<int>? days,
-    Value<bool>? planned,
     Value<String>? link,
-    Value<bool>? showInCalendar,
   }) {
     return MoneyTransactionsCompanion(
       id: id ?? this.id,
@@ -1715,9 +1622,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
       tags: tags ?? this.tags,
       date: date ?? this.date,
       days: days ?? this.days,
-      planned: planned ?? this.planned,
       link: link ?? this.link,
-      showInCalendar: showInCalendar ?? this.showInCalendar,
     );
   }
 
@@ -1751,14 +1656,8 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
     if (days.present) {
       map['days'] = Variable<int>(days.value);
     }
-    if (planned.present) {
-      map['planned'] = Variable<bool>(planned.value);
-    }
     if (link.present) {
       map['link'] = Variable<String>(link.value);
-    }
-    if (showInCalendar.present) {
-      map['show_in_calendar'] = Variable<bool>(showInCalendar.value);
     }
     return map;
   }
@@ -1775,9 +1674,7 @@ class MoneyTransactionsCompanion extends UpdateCompanion<MoneyTransaction> {
           ..write('tags: $tags, ')
           ..write('date: $date, ')
           ..write('days: $days, ')
-          ..write('planned: $planned, ')
-          ..write('link: $link, ')
-          ..write('showInCalendar: $showInCalendar')
+          ..write('link: $link')
           ..write(')'))
         .toString();
   }
@@ -2415,9 +2312,7 @@ typedef $$MoneyTransactionsTableCreateCompanionBuilder =
       Value<String> tags,
       Value<DateTime> date,
       Value<int> days,
-      Value<bool> planned,
       Value<String> link,
-      Value<bool> showInCalendar,
     });
 typedef $$MoneyTransactionsTableUpdateCompanionBuilder =
     MoneyTransactionsCompanion Function({
@@ -2430,9 +2325,7 @@ typedef $$MoneyTransactionsTableUpdateCompanionBuilder =
       Value<String> tags,
       Value<DateTime> date,
       Value<int> days,
-      Value<bool> planned,
       Value<String> link,
-      Value<bool> showInCalendar,
     });
 
 class $$MoneyTransactionsTableFilterComposer
@@ -2489,18 +2382,8 @@ class $$MoneyTransactionsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get planned => $composableBuilder(
-    column: $table.planned,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get link => $composableBuilder(
     column: $table.link,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get showInCalendar => $composableBuilder(
-    column: $table.showInCalendar,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2559,18 +2442,8 @@ class $$MoneyTransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get planned => $composableBuilder(
-    column: $table.planned,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get link => $composableBuilder(
     column: $table.link,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get showInCalendar => $composableBuilder(
-    column: $table.showInCalendar,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -2611,16 +2484,8 @@ class $$MoneyTransactionsTableAnnotationComposer
   GeneratedColumn<int> get days =>
       $composableBuilder(column: $table.days, builder: (column) => column);
 
-  GeneratedColumn<bool> get planned =>
-      $composableBuilder(column: $table.planned, builder: (column) => column);
-
   GeneratedColumn<String> get link =>
       $composableBuilder(column: $table.link, builder: (column) => column);
-
-  GeneratedColumn<bool> get showInCalendar => $composableBuilder(
-    column: $table.showInCalendar,
-    builder: (column) => column,
-  );
 }
 
 class $$MoneyTransactionsTableTableManager
@@ -2672,9 +2537,7 @@ class $$MoneyTransactionsTableTableManager
                 Value<String> tags = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
                 Value<int> days = const Value.absent(),
-                Value<bool> planned = const Value.absent(),
                 Value<String> link = const Value.absent(),
-                Value<bool> showInCalendar = const Value.absent(),
               }) => MoneyTransactionsCompanion(
                 id: id,
                 kind: kind,
@@ -2685,9 +2548,7 @@ class $$MoneyTransactionsTableTableManager
                 tags: tags,
                 date: date,
                 days: days,
-                planned: planned,
                 link: link,
-                showInCalendar: showInCalendar,
               ),
           createCompanionCallback:
               ({
@@ -2700,9 +2561,7 @@ class $$MoneyTransactionsTableTableManager
                 Value<String> tags = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
                 Value<int> days = const Value.absent(),
-                Value<bool> planned = const Value.absent(),
                 Value<String> link = const Value.absent(),
-                Value<bool> showInCalendar = const Value.absent(),
               }) => MoneyTransactionsCompanion.insert(
                 id: id,
                 kind: kind,
@@ -2713,9 +2572,7 @@ class $$MoneyTransactionsTableTableManager
                 tags: tags,
                 date: date,
                 days: days,
-                planned: planned,
                 link: link,
-                showInCalendar: showInCalendar,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../database/database.dart';
+
 class TagEditor extends StatefulWidget {
   final List<String> tags;
   final List<String> availableTags;
@@ -30,13 +32,17 @@ class _TagEditorState extends State<TagEditor> {
   TextEditingController? _inputController;
 
   void _addTag(String tag) {
+    if (isTagEditorHiddenTag(tag)) {
+      _inputController?.clear();
+      return;
+    }
     widget.onTagAdded(tag);
     _inputController?.clear();
   }
 
   void _refreshOptions(TextEditingController controller) {
     for (final tag in widget.availableTags) {
-      if (!widget.tags.contains(tag)) {
+      if (!isTagEditorHiddenTag(tag) && !widget.tags.contains(tag)) {
         controller.value = TextEditingValue(
           text: tag,
           selection: TextSelection.collapsed(offset: tag.length),
@@ -47,8 +53,27 @@ class _TagEditorState extends State<TagEditor> {
     }
   }
 
+  void _toggleStarTag() {
+    final starTags = widget.tags.where((tag) => tag.trim() == starTag).toList();
+    if (starTags.isEmpty) {
+      widget.onTagAdded(starTag);
+    } else {
+      for (final tag in starTags) {
+        widget.onTagRemoved(tag);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final visibleTags = widget.tags
+        .where((tag) => !isTagEditorHiddenTag(tag))
+        .toList();
+    final availableTags = widget.availableTags
+        .where((tag) => !isTagEditorHiddenTag(tag))
+        .toList();
+    final hasStarTag = widget.tags.any((tag) => tag.trim() == starTag);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -57,7 +82,7 @@ class _TagEditorState extends State<TagEditor> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                for (final tag in widget.tags)
+                for (final tag in visibleTags)
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: Chip(
@@ -77,11 +102,11 @@ class _TagEditorState extends State<TagEditor> {
                   initialValue: TextEditingValue(text: widget.initialInput),
                   optionsBuilder: (textValue) {
                     if (textValue.text.isEmpty) {
-                      return widget.availableTags.where(
+                      return availableTags.where(
                         (tag) => !widget.tags.contains(tag),
                       );
                     }
-                    return widget.availableTags.where(
+                    return availableTags.where(
                       (tag) =>
                           !widget.tags.contains(tag) &&
                           tag.toLowerCase().contains(
@@ -114,12 +139,6 @@ class _TagEditorState extends State<TagEditor> {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filledTonal(
-                tooltip: 'Add star tag',
-                icon: const Icon(Icons.star),
-                onPressed: () => _addTag('⭐'),
-              ),
-              const SizedBox(width: 4),
               IconButton.filled(
                 icon: const Icon(Icons.add),
                 onPressed: () {
@@ -128,6 +147,15 @@ class _TagEditorState extends State<TagEditor> {
                     _addTag(controller.text);
                   }
                 },
+              ),
+              const SizedBox(width: 4),
+              IconButton.filledTonal(
+                tooltip: hasStarTag ? 'Remove star tag' : 'Add star tag',
+                icon: Icon(
+                  Icons.star,
+                  color: hasStarTag ? Colors.yellow.shade700 : null,
+                ),
+                onPressed: _toggleStarTag,
               ),
             ],
           ),
