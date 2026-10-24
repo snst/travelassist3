@@ -9,12 +9,15 @@ class Totals {
   final CurrencyValue total;
   final Map<String, CurrencyValue> byCurrency = {};
 
-  bool get isEmpty => total.value == 0 && byCurrency.values.every((v) => v.value == 0);
+  bool get isEmpty =>
+      total.value == 0 && byCurrency.values.every((v) => v.value == 0);
 
   void add(String code, CurrencyValue amount, {double sign = 1}) {
     final signed = CurrencyValue(amount.value * sign, amount.currency);
     total.add(signed);
-    byCurrency.putIfAbsent(code, () => CurrencyValue(0, amount.currency)).add(signed);
+    byCurrency
+        .putIfAbsent(code, () => CurrencyValue(0, amount.currency))
+        .add(signed);
   }
 
   Totals scaled(double factor) {
@@ -29,9 +32,9 @@ class Totals {
 
 class ExpenseBreakdown {
   ExpenseBreakdown(this.home)
-      : total = Totals(home),
-        cash = Totals(home),
-        card = Totals(home);
+    : total = Totals(home),
+      cash = Totals(home),
+      card = Totals(home);
 
   final Currency? home;
   Totals total;
@@ -51,7 +54,9 @@ class ExpenseBreakdown {
       cash.add(code, amount, sign: sign);
     } else {
       card.add(code, amount, sign: sign);
-      cardByMethod.putIfAbsent(method, () => Totals(home)).add(code, amount, sign: sign);
+      cardByMethod
+          .putIfAbsent(method, () => Totals(home))
+          .add(code, amount, sign: sign);
     }
   }
 
@@ -60,21 +65,23 @@ class ExpenseBreakdown {
       ..total = total.scaled(factor)
       ..cash = cash.scaled(factor)
       ..card = card.scaled(factor);
-    cardByMethod.forEach((method, t) => result.cardByMethod[method] = t.scaled(factor));
+    cardByMethod.forEach(
+      (method, t) => result.cardByMethod[method] = t.scaled(factor),
+    );
     return result;
   }
 }
 
 class Balance {
   Balance._(this.home)
-      : expenses = ExpenseBreakdown(home),
-        dailyAverage = ExpenseBreakdown(home),
-        planned = ExpenseBreakdown(home),
-        cashOnHand = Totals(home),
-        cashAfterPlanned = Totals(home),
-        withdrawals = Totals(home),
-        deposits = Totals(home),
-        cashCounts = Totals(home);
+    : expenses = ExpenseBreakdown(home),
+      dailyAverage = ExpenseBreakdown(home),
+      planned = ExpenseBreakdown(home),
+      cashOnHand = Totals(home),
+      cashAfterPlanned = Totals(home),
+      withdrawals = Totals(home),
+      deposits = Totals(home),
+      cashCounts = Totals(home);
 
   factory Balance.from({
     required List<Currency> currencies,
@@ -93,9 +100,14 @@ class Balance {
       final amount = CurrencyValue(t.amount, byCode[t.currency]);
       final code = t.currency;
 
-      // Pending expenses (planned, or booked hotels) are future costs: they must not affect actual figures or the day range.
-      if (t.isPending && t.isSpending) {
-        balance.planned.add(code, amount, isCash: t.isCash, method: t.method.trim());
+      // Planned expenses are future costs: they must not affect actual figures or the day range.
+      if (t.isPlanned && t.isSpending) {
+        balance.planned.add(
+          code,
+          amount,
+          isCash: t.isCash,
+          method: t.method.trim(),
+        );
         if (t.isCash) balance.cashAfterPlanned.add(code, amount, sign: -1);
         continue;
       }
@@ -124,7 +136,9 @@ class Balance {
         case TransactionKind.withdrawal:
           balance.cashOnHand.add(code, amount);
           balance.withdrawals.add(code, amount);
-          final withdrawalMethod = t.method.trim().isEmpty ? 'Other' : t.method.trim();
+          final withdrawalMethod = t.method.trim().isEmpty
+              ? 'Other'
+              : t.method.trim();
           balance.withdrawalsByMethod
               .putIfAbsent(withdrawalMethod, () => Totals(home))
               .add(code, amount);
@@ -139,7 +153,9 @@ class Balance {
       }
     }
 
-    balance.cashOnHand.byCurrency.forEach((code, v) => balance.cashAfterPlanned.add(code, v));
+    balance.cashOnHand.byCurrency.forEach(
+      (code, v) => balance.cashAfterPlanned.add(code, v),
+    );
 
     if (first != null && last != null) {
       final start = DateTime.utc(first.year, first.month, first.day);
@@ -170,5 +186,6 @@ class Balance {
   final Totals cashCounts;
   int days = 1;
 
-  double cashIn(String currencyCode) => cashOnHand.byCurrency[currencyCode]?.value ?? 0;
+  double cashIn(String currencyCode) =>
+      cashOnHand.byCurrency[currencyCode]?.value ?? 0;
 }

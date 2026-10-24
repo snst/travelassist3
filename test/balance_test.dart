@@ -3,8 +3,20 @@ import 'package:travelassist3/balance/balance.dart';
 import 'package:travelassist3/database/database.dart';
 
 void main() {
-  const eur = Currency(id: 1, name: 'Euro', shortName: 'EUR', rate: 1, isHome: true);
-  const usd = Currency(id: 2, name: 'US Dollar', shortName: 'USD', rate: 2, isHome: false);
+  const eur = Currency(
+    id: 1,
+    name: 'Euro',
+    shortName: 'EUR',
+    rate: 1,
+    isHome: true,
+  );
+  const usd = Currency(
+    id: 2,
+    name: 'US Dollar',
+    shortName: 'USD',
+    rate: 2,
+    isHome: false,
+  );
 
   var nextId = 0;
   MoneyTransaction tx(
@@ -14,7 +26,7 @@ void main() {
     String method = '',
     DateTime? date,
     int days = 1,
-    TransactionState state = TransactionState.paid,
+    bool planned = false,
   }) {
     return MoneyTransaction(
       id: ++nextId,
@@ -26,8 +38,9 @@ void main() {
       tags: '',
       date: date ?? DateTime(2026, 5, 1, 12),
       days: days,
-      state: state.index,
+      planned: planned,
       link: '',
+      showInCalendar: false,
     );
   }
 
@@ -48,8 +61,14 @@ void main() {
       transactions: [
         tx(TransactionKind.withdrawal, 200, 'USD', method: 'Visa', date: day1),
         tx(TransactionKind.expense, 50, 'USD', method: cashMethod, date: day1),
-        tx(TransactionKind.expense, 10, 'EUR',
-            method: 'Visa', date: day2, days: 0),
+        tx(
+          TransactionKind.expense,
+          10,
+          'EUR',
+          method: 'Visa',
+          date: day2,
+          days: 0,
+        ),
         // Counted 140 USD while 150 USD were expected.
         tx(TransactionKind.cashCount, -10, 'USD', date: day2),
       ],
@@ -77,10 +96,22 @@ void main() {
       transactions: [
         tx(TransactionKind.withdrawal, 100, 'EUR', method: 'Visa'),
         tx(TransactionKind.expense, 20, 'EUR', method: cashMethod),
-        tx(TransactionKind.expense, 30, 'EUR',
-            method: cashMethod, state: TransactionState.planned, date: DateTime(2026, 5, 10)),
-        tx(TransactionKind.expense, 40, 'EUR',
-            method: 'Visa', state: TransactionState.planned, date: DateTime(2026, 5, 10)),
+        tx(
+          TransactionKind.expense,
+          30,
+          'EUR',
+          method: cashMethod,
+          planned: true,
+          date: DateTime(2026, 5, 10),
+        ),
+        tx(
+          TransactionKind.expense,
+          40,
+          'EUR',
+          method: 'Visa',
+          planned: true,
+          date: DateTime(2026, 5, 10),
+        ),
       ],
     );
 
@@ -92,29 +123,39 @@ void main() {
     expect(balance.days, 1);
   });
 
-  test('Hotels: planned and booked are pending, paid counts as expense', () {
+  test('Planned hotels stay out of actual expenses', () {
     final balance = Balance.from(
       currencies: [eur, usd],
       transactions: [
-        tx(TransactionKind.hotel, 100, 'EUR',
-            method: 'Visa', state: TransactionState.planned, date: DateTime(2026, 5, 10)),
-        tx(TransactionKind.hotel, 200, 'EUR',
-            method: 'Visa', state: TransactionState.booked, date: DateTime(2026, 5, 10)),
+        tx(
+          TransactionKind.hotel,
+          100,
+          'EUR',
+          method: 'Visa',
+          planned: true,
+          date: DateTime(2026, 5, 10),
+        ),
+        tx(
+          TransactionKind.hotel,
+          200,
+          'EUR',
+          method: 'Visa',
+          date: DateTime(2026, 5, 10),
+        ),
         tx(TransactionKind.hotel, 50, 'EUR', method: 'Visa'),
       ],
     );
 
-    expect(balance.planned.total.total.value, 300);
-    expect(balance.expenses.total.total.value, 50);
-    expect(balance.days, 1);
+    expect(balance.planned.total.total.value, 100);
+    expect(balance.expenses.total.total.value, 250);
+    expect(balance.days, 10);
   });
 
   test('Expense counted for several days extends the average range', () {
     final balance = Balance.from(
       currencies: [eur, usd],
       transactions: [
-        tx(TransactionKind.expense, 30, 'EUR',
-            method: cashMethod, days: 3),
+        tx(TransactionKind.expense, 30, 'EUR', method: cashMethod, days: 3),
       ],
     );
 
@@ -125,7 +166,9 @@ void main() {
   test('Unknown currency is kept without conversion', () {
     final balance = Balance.from(
       currencies: [eur],
-      transactions: [tx(TransactionKind.expense, 12, 'XYZ', method: cashMethod)],
+      transactions: [
+        tx(TransactionKind.expense, 12, 'XYZ', method: cashMethod),
+      ],
     );
 
     expect(balance.expenses.total.total.value, 12);

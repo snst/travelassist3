@@ -156,7 +156,7 @@ class _EntriesViewState extends State<_EntriesView> {
     // Entries are sorted newest first; flatten into day headers and entries.
     final dayExpenses = <DateTime, CurrencyValue>{};
     for (final t in filteredTransactions.where(
-      (t) => t.isSpending && !t.isPending,
+      (t) => t.isSpending && !t.isPlanned,
     )) {
       final day = DateTime(t.date.year, t.date.month, t.date.day);
       dayExpenses.putIfAbsent(day, () => CurrencyValue(0, home)).add(toHome(t));
@@ -305,12 +305,11 @@ class _EntryTile extends StatelessWidget {
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign =
         home.currency == null || home.currencyString != t.currency;
-    final showStatusBadge = t.isPlanned || (t.isHotel && t.isBooked);
+    final showStatusBadge = t.isPlanned;
     final hasInfo = t.comment.isNotEmpty;
     final paymentMethod = t.isSpending || t.isWithdrawal
         ? (t.method.isEmpty ? cashMethod : t.method)
         : null;
-    final details = [if (!t.isHotel && t.isBooked) 'Booked'].join(' · ');
     final subtitle = <Widget>[
       if (t.isHotel) const SizedBox(height: 2),
       if (t.tagList.isNotEmpty || paymentMethod != null)
@@ -369,13 +368,6 @@ class _EntryTile extends StatelessWidget {
           t.days == 1 ? '1 night' : '${t.days} nights',
           style: detailStyleSmall.copyWith(fontWeight: FontWeight.w600),
         ),
-      if (details.isNotEmpty)
-        Text(
-          details,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: detailStyleSmall,
-        ),
     ];
 
     return Dismissible(
@@ -406,12 +398,7 @@ class _EntryTile extends StatelessWidget {
                 Positioned(
                   right: -12,
                   bottom: -4,
-                  child: HotelStateBadge(
-                    state: t.isHotel
-                        ? t.transactionState
-                        : TransactionState.planned,
-                    compact: true,
-                  ),
+                  child: const PlannedBadge(compact: true),
                 ),
             ],
           ),

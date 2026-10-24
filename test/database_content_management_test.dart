@@ -1,4 +1,5 @@
 import 'dart:ffi';
+import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -138,7 +139,7 @@ void main() {
       tags: const ['food'],
       date: transactionDate,
       days: 2,
-      state: TransactionState.booked,
+      planned: true,
       link: 'https://example.com/receipt',
       showInCalendar: true,
     );
@@ -177,7 +178,7 @@ void main() {
     expect(transactions.single.amount, 12.5);
     expect(transactions.single.date, transactionDate);
     expect(transactions.single.showInCalendar, isTrue);
-    expect(transactions.single.state, TransactionState.booked.index);
+    expect(transactions.single.planned, isTrue);
   });
 
   test(
@@ -199,6 +200,99 @@ void main() {
       final notes = await database.select(database.notes).get();
       expect(notes.map((note) => note.comment), everyElement('Existing note'));
       expect(notes.map((note) => note.id).toSet(), hasLength(2));
+    },
+  );
+
+  test('legacy transaction JSON imports only the planned state', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    for (var i = 0; i < 3; i++) {
+      await database.addTransaction(
+        kind: TransactionKind.hotel,
+        amount: 10,
+        currency: 'EUR',
+      );
+    }
+
+    final exported = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.transactions),
+    ) as Map<String, dynamic>;
+    final legacyRecords = (exported['records'] as List<dynamic>).map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      row
+        ..remove('planned')
+        ..['state'] = (row['id'] as int) - 1;
+      return row;
+    }).toList();
+    exported['records'] = legacyRecords;
+
+    await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(exported),
+      deleteExisting: true,
+    );
+
+    final transactions = await database
+        .select(database.moneyTransactions)
+        .get();
+    expect(transactions.map((transaction) => transaction.planned), [
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  test(
+    'database upgrade migrates planned status and drops the old state',
+    () async {
+      final database = AppDatabase.forTesting(
+        NativeDatabase.memory(
+          setup: (rawDatabase) {
+            rawDatabase.execute('''
+            CREATE TABLE money_transactions (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              kind INTEGER NOT NULL DEFAULT 0,
+              amount REAL NOT NULL,
+              currency TEXT NOT NULL,
+              method TEXT NOT NULL DEFAULT '',
+              comment TEXT NOT NULL DEFAULT '',
+              tags TEXT NOT NULL DEFAULT '',
+              date INTEGER NOT NULL,
+              days INTEGER NOT NULL DEFAULT 1,
+              state INTEGER NOT NULL DEFAULT 2,
+              link TEXT NOT NULL DEFAULT '',
+              show_in_calendar INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+            rawDatabase.execute('''
+            INSERT INTO money_transactions (kind, amount, currency, state, date)
+            VALUES (4, 10, 'EUR', 0, 0), (4, 20, 'EUR', 1, 0), (4, 30, 'EUR', 2, 0)
+          ''');
+            rawDatabase.execute('PRAGMA user_version = 10');
+          },
+        ),
+      );
+      addTearDown(database.close);
+
+      final transactions = await database
+          .select(database.moneyTransactions)
+          .get();
+      expect(transactions.map((transaction) => transaction.planned), [
+        true,
+        false,
+        false,
+      ]);
+      final columns = await database
+          .customSelect('PRAGMA table_info(money_transactions)')
+          .get();
+      expect(
+        columns.map((column) => column.read<String>('name')),
+        contains('planned'),
+      );
+      expect(
+        columns.map((column) => column.read<String>('name')),
+        isNot(contains('state')),
+      );
     },
   );
 

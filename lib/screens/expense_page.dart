@@ -8,6 +8,7 @@ import '../utils/transaction_kind.dart';
 import '../widgets/add_payment_method_dialog.dart';
 import '../widgets/comment_input.dart';
 import '../widgets/date_time_picker_tile.dart';
+import '../widgets/days_input.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/expense_options.dart';
 import '../widgets/link_editor.dart';
@@ -89,7 +90,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   String _tagDraft = '';
   late DateTime _date;
   late int _averageDays;
-  late TransactionState _state;
+  late bool _isPlanned;
   late bool _showInCalendar;
   Future<void>? _gpsLocationCapture;
   bool _gpsLocationCaptureStarted = false;
@@ -116,7 +117,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
     _averageDays = t?.days ?? 1;
-    _state = t?.transactionState ?? TransactionState.paid;
+    _isPlanned = t?.planned ?? false;
     _showInCalendar = t?.showInCalendar ?? false;
     if (t == null) _methodController.text = _methods.first;
   }
@@ -183,7 +184,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         tags: _tags,
         date: _date,
         days: _averageDays,
-        state: _state,
+        planned: _isPlanned,
         link: _links.joined,
         showInCalendar: _showInCalendar,
       );
@@ -197,7 +198,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           tags: _tags.join(','),
           date: _date,
           days: _averageDays,
-          state: _state.index,
+          planned: _isPlanned,
           link: _links.joined,
           showInCalendar: _showInCalendar,
         ),
@@ -245,15 +246,32 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             onTagRemoved: (tag) => setState(() => _tags.remove(tag)),
           ),
           CommentInput(controller: _commentController),
-          DateTimePickerTile(
-            value: _date,
-            onChanged: (date) => setState(() => _date = date),
+          Row(
+            children: [
+              Expanded(
+                child: DateTimePickerTile(
+                  value: _date,
+                  onChanged: (date) => setState(() => _date = date),
+                ),
+              ),
+              const SizedBox(
+                height: 32,
+                child: VerticalDivider(width: 16, thickness: 1),
+              ),
+              Expanded(
+                child: DaysInput(
+                  days: _averageDays,
+                  unit: 'day',
+                  onChanged: (value) => setState(() => _averageDays = value),
+                ),
+              ),
+            ],
           ),
           ExpenseOptions(
-            state: _state,
+            isPlanned: _isPlanned,
             averageDays: _averageDays,
             inCalendar: _showInCalendar,
-            onStateChanged: (v) => setState(() => _state = v),
+            onPlannedChanged: (value) => setState(() => _isPlanned = value),
             onAverageDaysChanged: (v) => setState(() => _averageDays = v),
             onCalendarChanged: (v) => setState(() => _showInCalendar = v),
           ),

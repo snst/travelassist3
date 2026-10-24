@@ -60,9 +60,7 @@ class MoneyTransactions extends Table {
   // Number of days the entry covers: for expenses the days it counts in the daily average
   // (0 = not included, 1 = default), for e.g. a hotel booking its length.
   IntColumn get days => integer().withDefault(const Constant(1))();
-  IntColumn get state => integer().withDefault(
-    const Constant(2),
-  )(); // TransactionState.index, default paid
+  BoolColumn get planned => boolean().withDefault(const Constant(false))();
   TextColumn get link => text().withDefault(
     const Constant(''),
   )(); // tab separated, like Notes.link
@@ -77,7 +75,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -91,6 +89,15 @@ class AppDatabase extends _$AppDatabase {
             moneyTransactions,
             moneyTransactions.showInCalendar,
           );
+        }
+        if (from < 11) {
+          await m.addColumn(moneyTransactions, moneyTransactions.planned);
+          await customStatement(
+            'UPDATE money_transactions SET planned = state = 0',
+          );
+          // Rebuild the table to remove the legacy state column.
+          // ignore: experimental_member_use
+          await m.alterTable(TableMigration(moneyTransactions));
         }
       },
     );
@@ -319,7 +326,7 @@ class AppDatabase extends _$AppDatabase {
     List<String> tags = const [],
     DateTime? date,
     int days = 1,
-    TransactionState state = TransactionState.paid,
+    bool planned = false,
     String link = '',
     bool showInCalendar = false,
   }) {
@@ -335,7 +342,7 @@ class AppDatabase extends _$AppDatabase {
         ),
         date: Value(date ?? DateTime.now()),
         days: Value(days),
-        state: Value(state.index),
+        planned: Value(planned),
         link: Value(link),
         showInCalendar: Value(showInCalendar),
       ),
@@ -472,11 +479,14 @@ class AppDatabase extends _$AppDatabase {
           }
         });
       case DatabaseContent.transactions:
-        final rows = _parseRecords(
-          decoded['records'],
-          MoneyTransaction.fromJson,
-          content,
-        );
+        final records = (decoded['records'] as List<dynamic>).map((record) {
+          if (record is! Map<String, dynamic>) return record;
+          if (record.containsKey('planned') || !record.containsKey('state')) {
+            return record;
+          }
+          return {...record, 'planned': record['state'] == 0};
+        }).toList();
+        final rows = _parseRecords(records, MoneyTransaction.fromJson, content);
         await transaction(() async {
           final preserveIds = await _prepareImport(content, deleteExisting);
           for (final row in rows) {
@@ -492,7 +502,7 @@ class AppDatabase extends _$AppDatabase {
                       tags: Value(row.tags),
                       date: Value(row.date),
                       days: Value(row.days),
-                      state: Value(row.state),
+                      planned: Value(row.planned),
                       link: Value(row.link),
                       showInCalendar: Value(row.showInCalendar),
                     ),
@@ -577,9 +587,6 @@ enum DatabaseContent {
 // The index is stored in the database: only append new kinds.
 enum TransactionKind { expense, withdrawal, cashCount, deposit, hotel }
 
-/// Lifecycle of a transaction; the index is stored in [MoneyTransactions.state].
-enum TransactionState { planned, booked, paid }
-
 const cashMethod = 'Cash';
 
 extension MoneyTransactionHelpers on MoneyTransaction {
@@ -587,14 +594,7 @@ extension MoneyTransactionHelpers on MoneyTransaction {
       ? TransactionKind.values[kind]
       : TransactionKind.expense;
 
-  TransactionState get transactionState =>
-      state >= 0 && state < TransactionState.values.length
-      ? TransactionState.values[state]
-      : TransactionState.paid;
-
-  bool get isPlanned => transactionState == TransactionState.planned;
-  bool get isBooked => transactionState == TransactionState.booked;
-  bool get isPaid => transactionState == TransactionState.paid;
+  bool get isPlanned => planned;
 
   bool get isExpense => type == TransactionKind.expense;
   bool get isWithdrawal => type == TransactionKind.withdrawal;
@@ -604,9 +604,6 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   /// Money spent on something: an expense or a hotel booking.
   bool get isSpending => isExpense || isHotel;
-
-  /// Still a future cost: planned, or for a hotel also booked but not yet paid.
-  bool get isPending => isPlanned || (isHotel && isBooked);
 
   bool get isCash => method.trim().isEmpty || method == cashMethod;
 

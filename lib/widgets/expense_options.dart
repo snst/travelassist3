@@ -1,31 +1,28 @@
 import 'package:flutter/material.dart';
 
-import '../database/database.dart';
-
 enum _ExpenseOption { planned, noAverage, calendar }
 
 /// Compact, independently selectable options for an expense.
 class ExpenseOptions extends StatelessWidget {
-  final TransactionState state;
+  final bool isPlanned;
   final int averageDays;
   final bool inCalendar;
-  final ValueChanged<TransactionState> onStateChanged;
+  final ValueChanged<bool> onPlannedChanged;
   final ValueChanged<int> onAverageDaysChanged;
   final ValueChanged<bool> onCalendarChanged;
 
   const ExpenseOptions({
     super.key,
-    required this.state,
+    required this.isPlanned,
     required this.averageDays,
     required this.inCalendar,
-    required this.onStateChanged,
+    required this.onPlannedChanged,
     required this.onAverageDaysChanged,
     required this.onCalendarChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPlanned = state == TransactionState.planned;
     final noAverage = averageDays == 0;
     final selected = <_ExpenseOption>{
       if (isPlanned) _ExpenseOption.planned,
@@ -42,7 +39,8 @@ class ExpenseOptions extends StatelessWidget {
         segments: const [
           ButtonSegment(
             value: _ExpenseOption.planned,
-            label: Text('Is Planned'),
+            label: Text('Planned'),
+            icon: Icon(Icons.schedule),
           ),
           ButtonSegment(
             value: _ExpenseOption.noAverage,
@@ -57,9 +55,7 @@ class ExpenseOptions extends StatelessWidget {
         onSelectionChanged: (newSelection) {
           final nowPlanned = newSelection.contains(_ExpenseOption.planned);
           if (nowPlanned != isPlanned) {
-            onStateChanged(
-              nowPlanned ? TransactionState.planned : TransactionState.paid,
-            );
+            onPlannedChanged(nowPlanned);
           }
 
           final nowNoAverage = newSelection.contains(_ExpenseOption.noAverage);

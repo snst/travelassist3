@@ -90,7 +90,7 @@ class _HotelFormState extends State<_HotelForm> {
   String _tagDraft = '';
   late DateTime _date;
   late int _days;
-  late TransactionState _state;
+  late bool _isPlanned;
 
   List<String> get _methods => paymentMethodSuggestions(
     transactions: widget.transactions,
@@ -114,7 +114,7 @@ class _HotelFormState extends State<_HotelForm> {
     _tags = t?.tagList ?? [];
     _date = t?.date ?? DateTime.now();
     _days = t?.days ?? 1;
-    _state = t?.transactionState ?? TransactionState.planned;
+    _isPlanned = t?.planned ?? true;
     if (t == null) _methodController.text = _methods.first;
   }
 
@@ -162,7 +162,7 @@ class _HotelFormState extends State<_HotelForm> {
         tags: _tags,
         date: _date,
         days: _days,
-        state: _state,
+        planned: _isPlanned,
         link: _links.joined,
       );
     } else {
@@ -175,7 +175,7 @@ class _HotelFormState extends State<_HotelForm> {
           tags: _tags.join(','),
           date: _date,
           days: _days,
-          state: _state.index,
+          planned: _isPlanned,
           link: _links.joined,
         ),
       );
@@ -244,8 +244,8 @@ class _HotelFormState extends State<_HotelForm> {
             ],
           ),
           ReservationState(
-            state: _state,
-            onStateChanged: (v) => setState(() => _state = v),
+            isPlanned: _isPlanned,
+            onPlannedChanged: (value) => setState(() => _isPlanned = value),
           ),
           LinkEditor(controller: _links),
           FilledButton.icon(

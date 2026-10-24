@@ -1,36 +1,18 @@
 import 'package:flutter/material.dart';
-import '../database/database.dart';
 
-/// A colored pill showing the booking state of a hotel: planned, booked or paid.
-class HotelStateBadge extends StatelessWidget {
-  final TransactionState state;
+/// A colored pill showing that a transaction is planned.
+class PlannedBadge extends StatelessWidget {
   final bool compact;
 
-  const HotelStateBadge({super.key, required this.state, this.compact = false});
+  const PlannedBadge({super.key, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (label, icon, background, foreground) = switch (state) {
-      TransactionState.planned => (
-          'PLANNED',
-          Icons.schedule,
-          scheme.surface,
-          scheme.tertiary,
-        ),
-      TransactionState.booked => (
-          'BOOKED',
-          Icons.event_available,
-          scheme.primary,
-          scheme.onPrimary,
-        ),
-      TransactionState.paid => (
-          'PAID',
-          Icons.check_circle,
-          Colors.green.shade700,
-          Colors.white,
-        ),
-    };
+    const label = 'PLANNED';
+    const icon = Icons.schedule;
+    final background = scheme.surface;
+    final foreground = scheme.tertiary;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -40,7 +22,7 @@ class HotelStateBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: state == TransactionState.planned ? foreground : background),
+        border: Border.all(color: foreground),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

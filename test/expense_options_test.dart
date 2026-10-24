@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:travelassist3/database/database.dart';
 import 'package:travelassist3/widgets/expense_options.dart';
 
 void main() {
@@ -12,7 +11,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
 
-      TransactionState? state;
+      bool? isPlanned;
       int? averageDays;
       bool? inCalendar;
 
@@ -20,10 +19,10 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: ExpenseOptions(
-              state: TransactionState.planned,
+              isPlanned: true,
               averageDays: 0,
               inCalendar: true,
-              onStateChanged: (value) => state = value,
+              onPlannedChanged: (value) => isPlanned = value,
               onAverageDaysChanged: (value) => averageDays = value,
               onCalendarChanged: (value) => inCalendar = value,
             ),
@@ -36,15 +35,21 @@ void main() {
         find.byWidgetPredicate((widget) => widget is SegmentedButton),
         findsOneWidget,
       );
-      expect(find.text('Is Planned'), findsOneWidget);
+      final segmentedButton = tester
+          .widgetList<SegmentedButton>(
+            find.byWidgetPredicate((widget) => widget is SegmentedButton),
+          )
+          .single;
+      expect(segmentedButton.segments, hasLength(3));
+      expect(find.text('Planned'), findsOneWidget);
       expect(find.text('No average'), findsOneWidget);
       expect(find.text('In calendar'), findsOneWidget);
 
-      await tester.tap(find.text('Is Planned'));
+      await tester.tap(find.text('Planned'));
       await tester.tap(find.text('No average'));
       await tester.tap(find.text('In calendar'));
 
-      expect(state, TransactionState.paid);
+      expect(isPlanned, isFalse);
       expect(averageDays, 1);
       expect(inCalendar, isFalse);
     },

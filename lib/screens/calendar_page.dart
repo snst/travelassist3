@@ -362,25 +362,6 @@ class _BookingBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = booking.transaction;
-    final state = t.transactionState;
-    /*final background = !booking.isHotel && isDark
-        ? switch (state) {
-            TransactionState.planned => scheme.tertiaryContainer,
-            TransactionState.booked => scheme.primaryContainer,
-            TransactionState.paid => scheme.secondaryContainer,
-          }
-        : switch (state) {
-            TransactionState.planned => scheme.tertiaryContainer,
-            TransactionState.booked => scheme.primaryContainer,
-            TransactionState.paid => Colors.green.shade100,
-          };
-    final expenseForeground = isDark
-        ? switch (state) {
-            TransactionState.planned => scheme.onTertiaryContainer,
-            TransactionState.booked => scheme.onPrimaryContainer,
-            TransactionState.paid => scheme.onSecondaryContainer,
-          }
-        : null;*/
     final background = booking.isHotel
         ? scheme.primaryContainer
         : scheme.tertiaryContainer;
@@ -433,7 +414,7 @@ class _BookingBar extends StatelessWidget {
                           const SizedBox(width: 4),
                         ],
                         const SizedBox(width: 4),
-                        HotelStateBadge(state: state, compact: true),
+                        if (t.isPlanned) const PlannedBadge(compact: true),
                       ],
                     ),
                     Text(
