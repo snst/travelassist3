@@ -230,7 +230,7 @@ class _HotelFormState extends State<_HotelForm> {
           currency: _currencyCode,
           method: method,
           comment: comment,
-          tags: _tags.join(','),
+          tags: _tags.join(databaseListSeparator),
           date: _date,
           days: _days,
           link: _links.joined,

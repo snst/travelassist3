@@ -49,8 +49,9 @@ class _NoteItemPageState extends State<NoteItemPage> {
   void initState() {
     super.initState();
     final note = widget.note;
-    _commentController =
-        TextEditingController(text: note?.comment ?? widget.initialComment);
+    _commentController = TextEditingController(
+      text: note?.comment ?? widget.initialComment,
+    );
 
     _links = LinkListController(note?.linkList ?? widget.initialLinks);
 
@@ -131,14 +132,14 @@ class _NoteItemPageState extends State<NoteItemPage> {
               tooltip: 'Delete Note',
               onPressed: _confirmDelete,
             ),
-            SizedBox(width:16),
-            IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: isNew ? 'Save Note' : 'Update Note',
-              onPressed: _saveNote,
-            ),
-            SizedBox(width:16),
-            IconButton(
+          SizedBox(width: 16),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: isNew ? 'Save Note' : 'Update Note',
+            onPressed: _saveNote,
+          ),
+          SizedBox(width: 16),
+          IconButton(
             icon: const Icon(Icons.visibility_outlined),
             tooltip: 'View Info',
             onPressed: () {
@@ -228,7 +229,7 @@ class _NoteItemPageState extends State<NoteItemPage> {
           tags: _tags,
         );
       } else {
-        final tagString = _tags.join(',');
+        final tagString = _tags.join(databaseListSeparator);
         final updated = widget.note!.copyWith(
           comment: comment,
           link: link,

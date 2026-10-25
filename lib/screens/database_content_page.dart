@@ -179,60 +179,105 @@ class DatabaseContentPage extends StatelessWidget {
 
       final json = utf8.decode(await file.readAsBytes());
       if (!context.mounted) return;
-      final existingCount = await database.countContent(content);
-      final existingCurrencyCount = content == DatabaseContent.transactions
-          ? await database.countContent(DatabaseContent.currencies)
-          : 0;
-      var deleteExisting = false;
-      if (existingCount + existingCurrencyCount > 0) {
-        if (!context.mounted) return;
-        final existingItems = [
-          if (existingCount > 0)
-            '$existingCount ${content.label.toLowerCase()}',
-          if (existingCurrencyCount > 0) '$existingCurrencyCount currencies',
-        ].join(' and ');
-        final choice = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text('Import ${content.label}?'),
-            content: Text(
-              'There are already $existingItems. '
-              'Delete the existing items before importing?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Cancel import'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: const Text('Keep existing'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: const Text('Delete and import'),
-              ),
-            ],
-          ),
-        );
-        if (choice == null) return;
-        deleteExisting = choice;
-      }
-
-      await database.importContentFromJson(
+      final imported = await database.importContentFromJson(
         content,
         json,
-        deleteExisting: deleteExisting,
+        onConflict: (conflict) => _resolveImportConflict(context, conflict),
       );
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('${content.label} imported')));
+      if (imported == null || !context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Import complete'),
+          content: Text(
+            'Added: ${imported.added}\n'
+            'Skipped: ${imported.skipped}\n'
+            'Updated: ${imported.updated}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } on Exception catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not import ${content.label}: $error')),
       );
     }
+  }
+
+  Future<ImportConflictResolution> _resolveImportConflict(
+    BuildContext context,
+    ImportConflict conflict,
+  ) async {
+    final existingComment = conflict.existingComment?.trim();
+    final importedComment = conflict.comment?.trim();
+    final resolution = await showDialog<ImportConflictResolution>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${conflict.content.label} item conflict'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'An item with this UUID already exists, but its last-modified '
+              'timestamp differs.\n\n'
+              'Existing: ${conflict.existingLastModified.toLocal()}\n'
+              'Imported: ${conflict.incomingLastModified.toLocal()}\n\n'
+              'UUID: ${conflict.uuid}',
+            ),
+            if (existingComment != null && existingComment.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Existing comment: $existingComment'),
+            ],
+            if (importedComment != null &&
+                importedComment.isNotEmpty &&
+                importedComment != existingComment) ...[
+              const SizedBox(height: 12),
+              Text('Imported comment: $importedComment'),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(ImportConflictResolution.cancelImport),
+            child: const Text('Cancel import'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(ImportConflictResolution.skip),
+            child: const Text('Skip'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(ImportConflictResolution.overwrite),
+            child: const Text('Overwrite'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(ImportConflictResolution.skipAll),
+            child: const Text('Skip all'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(ImportConflictResolution.overwriteAll),
+            child: const Text('Overwrite all'),
+          ),
+        ],
+      ),
+    );
+    return resolution ?? ImportConflictResolution.cancelImport;
   }
 
   Future<void> _exportContent(

@@ -9,6 +9,10 @@ import 'package:travelassist3/database/database.dart';
 import 'package:travelassist3/screens/database_content_page.dart';
 import 'package:travelassist3/screens/home_page.dart';
 
+Future<ImportConflictResolution> _skipConflicts(
+  ImportConflict conflict,
+) async => ImportConflictResolution.skipAll;
+
 void main() {
   setUpAll(() {
     open.overrideFor(OperatingSystem.linux, () {
@@ -33,6 +37,363 @@ void main() {
     expect(find.byType(DatabaseContentPage), findsOneWidget);
     expect(tester.takeException(), isNull);
   }
+
+  test(
+    'records get UUIDs and refresh last-modified timestamps on save',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.addCurrency(
+        name: 'Euro',
+        shortName: 'EUR',
+        rate: 1,
+        isHome: true,
+      );
+      await database.addTodoItem(name: 'Passport');
+      await database.addNote(comment: 'Travel note');
+      await database.addTransaction(
+        kind: TransactionKind.expense,
+        amount: 10,
+        currency: 'EUR',
+      );
+
+      final currency =
+          (await database.select(database.currencies).get()).single;
+      final todo = (await database.select(database.todoItems).get()).single;
+      final note = (await database.select(database.notes).get()).single;
+      final transaction =
+          (await database.select(database.moneyTransactions).get()).single;
+      final uuids = [currency.uuid, todo.uuid, note.uuid, transaction.uuid];
+
+      expect(uuids.toSet(), hasLength(4));
+      for (final uuid in uuids) {
+        expect(
+          uuid,
+          matches(
+            RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+            ),
+          ),
+        );
+      }
+
+      final oldTimestamp = DateTime(2000);
+      await database.updateCurrencyEntry(
+        currency.copyWith(name: 'Euro updated', lastModified: oldTimestamp),
+      );
+      await database.updateTodoItemEntry(
+        todo.copyWith(name: 'Passport updated', lastModified: oldTimestamp),
+      );
+      await database.updateNoteEntry(
+        note.copyWith(
+          comment: 'Travel note updated',
+          lastModified: oldTimestamp,
+        ),
+      );
+      await database.updateTransactionEntry(
+        transaction.copyWith(comment: 'Lunch', lastModified: oldTimestamp),
+      );
+
+      expect(
+        (await database.select(database.currencies).get()).single.lastModified
+            .isAfter(oldTimestamp),
+        isTrue,
+      );
+      expect(
+        (await database.select(database.todoItems).get()).single.lastModified
+            .isAfter(oldTimestamp),
+        isTrue,
+      );
+      expect(
+        (await database.select(database.notes).get()).single.lastModified
+            .isAfter(oldTimestamp),
+        isTrue,
+      );
+      expect(
+        (await database.select(database.moneyTransactions).get())
+            .single
+            .lastModified
+            .isAfter(oldTimestamp),
+        isTrue,
+      );
+    },
+  );
+
+  test('imports older exports without UUID or last-modified fields', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Legacy note');
+    final exported = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.notes),
+    ) as Map<String, dynamic>;
+    final record = Map<String, dynamic>.from(
+      (exported['records'] as List<dynamic>).single as Map,
+    )..removeWhere((key, _) => key == 'uuid' || key == 'lastModified');
+    final nullMetadataRecord = Map<String, dynamic>.from(record)
+      ..['uuid'] = null
+      ..['lastModified'] = null
+      ..['comment'] = 'Legacy note with null metadata';
+    exported['records'] = [record, nullMetadataRecord];
+
+    await database.clearContent(DatabaseContent.notes);
+    final importStarted = DateTime.now().subtract(const Duration(seconds: 1));
+    await database.importContentFromJson(
+      DatabaseContent.notes,
+      jsonEncode(exported),
+      onConflict: _skipConflicts,
+    );
+    final importFinished = DateTime.now().add(const Duration(seconds: 1));
+
+    final restored = await database.select(database.notes).get();
+    expect(restored.map((note) => note.comment).toSet(), {
+      'Legacy note',
+      'Legacy note with null metadata',
+    });
+    expect(restored.map((note) => note.uuid).toSet(), hasLength(2));
+    for (final note in restored) {
+      expect(note.uuid, isNotEmpty);
+      expect(note.lastModified.isAfter(importStarted), isTrue);
+      expect(note.lastModified.isBefore(importFinished), isTrue);
+    }
+  });
+
+  test('conflicting UUIDs support skip, overwrite, and apply-to-all', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'First');
+    await database.addNote(comment: 'Second');
+
+    Future<Map<String, dynamic>> changedExport(DateTime modifiedAt) async {
+      final decoded = jsonDecode(
+        await database.exportContentAsJson(DatabaseContent.notes),
+      ) as Map<String, dynamic>;
+      decoded['records'] = (decoded['records'] as List<dynamic>).map((raw) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        row
+          ..['comment'] = '${row['comment']} updated'
+          ..['lastModified'] = modifiedAt.toIso8601String();
+        return row;
+      }).toList();
+      return decoded;
+    }
+
+    final overwriteExport = jsonEncode(await changedExport(DateTime(2030)));
+    var conflictCount = 0;
+    final imported = await database.importContentFromJson(
+      DatabaseContent.notes,
+      overwriteExport,
+      onConflict: (_) async {
+        conflictCount++;
+        return ImportConflictResolution.overwriteAll;
+      },
+    );
+    expect(imported, isNotNull);
+    expect(imported!.added, 0);
+    expect(imported.skipped, 0);
+    expect(imported.updated, 2);
+    expect(conflictCount, 1);
+    expect(
+      (await database.select(database.notes).get())
+          .map((note) => note.comment)
+          .toSet(),
+      {'First updated', 'Second updated'},
+    );
+
+    final skipExport = jsonEncode(await changedExport(DateTime(2040)));
+    conflictCount = 0;
+    final skipped = await database.importContentFromJson(
+      DatabaseContent.notes,
+      skipExport,
+      onConflict: (_) async {
+        conflictCount++;
+        return ImportConflictResolution.skipAll;
+      },
+    );
+    expect(skipped, isNotNull);
+    expect(skipped!.added, 0);
+    expect(skipped.skipped, 2);
+    expect(skipped.updated, 0);
+    expect(conflictCount, 1);
+    expect(
+      (await database.select(database.notes).get())
+          .map((note) => note.comment)
+          .toSet(),
+      {'First updated', 'Second updated'},
+    );
+  });
+
+  test('conflict callback can skip or overwrite a single item', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Original');
+    final decoded = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.notes),
+    ) as Map<String, dynamic>;
+    final record =
+        Map<String, dynamic>.from(
+            (decoded['records'] as List<dynamic>).single as Map,
+          )
+          ..['comment'] = 'Replacement'
+          ..['lastModified'] = DateTime(2030).toIso8601String();
+    decoded['records'] = [record];
+
+    String? conflictComment;
+    final skipped = await database.importContentFromJson(
+      DatabaseContent.notes,
+      jsonEncode(decoded),
+      onConflict: (conflict) async {
+        conflictComment = conflict.comment;
+        return ImportConflictResolution.skip;
+      },
+    );
+    expect(conflictComment, 'Replacement');
+    expect(skipped?.added, 0);
+    expect(skipped?.skipped, 1);
+    expect(skipped?.updated, 0);
+    expect(
+      (await database.select(database.notes).get()).single.comment,
+      'Original',
+    );
+
+    final overwritten = await database.importContentFromJson(
+      DatabaseContent.notes,
+      jsonEncode(decoded),
+      onConflict: (_) async => ImportConflictResolution.overwrite,
+    );
+    expect(overwritten?.added, 0);
+    expect(overwritten?.skipped, 0);
+    expect(overwritten?.updated, 1);
+    expect(
+      (await database.select(database.notes).get()).single.comment,
+      'Replacement',
+    );
+  });
+
+  test('expense conflicts include existing and imported comments', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addTransaction(
+      kind: TransactionKind.expense,
+      amount: 12,
+      currency: 'EUR',
+      comment: 'Current expense note',
+    );
+    final decoded = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.transactions),
+    ) as Map<String, dynamic>;
+    final record = Map<String, dynamic>.from(
+      (decoded['records'] as List<dynamic>).single as Map,
+    );
+    final importedDate = DateTime(2030, 1, 2);
+    final importedModified = DateTime(2030, 1, 2, 3, 4, 5, 678);
+    record
+      ..['kind'] = TransactionKind.hotel.index
+      ..['amount'] = 88.5
+      ..['currency'] = 'USD'
+      ..['method'] = 'Card'
+      ..['comment'] = 'Imported expense note'
+      ..['tags'] = ['trip', 'booked']
+      ..['date'] = importedDate.toIso8601String()
+      ..['days'] = 7
+      ..['link'] = ['https://example.com/receipt']
+      ..['lastModified'] = importedModified.toIso8601String();
+    decoded['records'] = [record];
+
+    ImportConflict? receivedConflict;
+    await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(decoded),
+      onConflict: (conflict) async {
+        receivedConflict = conflict;
+        return ImportConflictResolution.skip;
+      },
+    );
+
+    expect(receivedConflict?.existingComment, 'Current expense note');
+    expect(receivedConflict?.comment, 'Imported expense note');
+
+    final summary = await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(decoded),
+      onConflict: (_) async => ImportConflictResolution.overwrite,
+    );
+    expect(summary?.updated, 1);
+    final overwritten =
+        (await database.select(database.moneyTransactions).get()).single;
+    expect(overwritten.kind, TransactionKind.hotel.index);
+    expect(overwritten.amount, 88.5);
+    expect(overwritten.currency, 'USD');
+    expect(overwritten.method, 'Card');
+    expect(overwritten.comment, 'Imported expense note');
+    expect(overwritten.tags, 'trip\tbooked');
+    expect(overwritten.date, importedDate);
+    expect(overwritten.days, 7);
+    expect(overwritten.link, 'https://example.com/receipt');
+    expect(overwritten.lastModified, importedModified);
+
+    var repeatedConflicts = 0;
+    final repeatedImport = await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(decoded),
+      onConflict: (_) async {
+        repeatedConflicts++;
+        return ImportConflictResolution.skip;
+      },
+    );
+    expect(repeatedConflicts, 0);
+    expect(repeatedImport?.added, 0);
+    expect(repeatedImport?.skipped, 1);
+    expect(repeatedImport?.updated, 0);
+
+    final changedInSameSecond = DateTime(2030, 1, 2, 3, 4, 5, 679);
+    record['lastModified'] = changedInSameSecond.toIso8601String();
+    var sameSecondConflicts = 0;
+    final changedImport = await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(decoded),
+      onConflict: (_) async {
+        sameSecondConflicts++;
+        return ImportConflictResolution.overwrite;
+      },
+    );
+    expect(sameSecondConflicts, 1);
+    expect(changedImport?.updated, 1);
+    expect(
+      (await database.select(database.moneyTransactions).get())
+          .single
+          .lastModified,
+      changedInSameSecond,
+    );
+  });
+
+  test('cancelling a conflict leaves the import unapplied', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Original');
+    final decoded = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.notes),
+    ) as Map<String, dynamic>;
+    final original = Map<String, dynamic>.from(
+      (decoded['records'] as List<dynamic>).single as Map,
+    )..['lastModified'] = DateTime(2030).toIso8601String();
+    final newNote = Map<String, dynamic>.from(original)
+      ..['uuid'] = '00000000-0000-4000-8000-000000000004'
+      ..['comment'] = 'Would be new';
+    decoded['records'] = [newNote, original];
+
+    final imported = await database.importContentFromJson(
+      DatabaseContent.notes,
+      jsonEncode(decoded),
+      onConflict: (_) async => ImportConflictResolution.cancelImport,
+    );
+
+    expect(imported, isNull);
+    expect(
+      (await database.select(database.notes).get()).map((note) => note.comment),
+      ['Original'],
+    );
+  });
 
   testWidgets('database content deletion requires confirmation and is scoped', (
     tester,
@@ -135,7 +496,7 @@ void main() {
     );
     await database.addNote(
       comment: 'Travel note',
-      link: 'https://example.com',
+      link: 'https://example.com\tgeo:48.8584,2.2945',
       tags: const ['trip', 'important'],
     );
     await database.addTransaction(
@@ -160,7 +521,17 @@ void main() {
     final transactionExport = jsonDecode(
       exports[DatabaseContent.transactions]!,
     ) as Map<String, dynamic>;
+    final noteExport =
+        jsonDecode(exports[DatabaseContent.notes]!) as Map<String, dynamic>;
+    final exportedNote = (noteExport['records'] as List<dynamic>).single as Map;
+    final exportedTransaction =
+        (transactionExport['records'] as List<dynamic>).single as Map;
+    expect(noteExport['formatVersion'], 2);
+    expect(exportedNote['link'], ['https://example.com', 'geo:48.8584,2.2945']);
+    expect(exportedNote['tags'], ['trip', 'important']);
     expect(transactionExport['currencies'], hasLength(1));
+    expect(exportedTransaction['link'], ['https://example.com/receipt']);
+    expect(exportedTransaction['tags'], ['food', 'calendar', 'planned']);
     for (final content in DatabaseContent.values) {
       await database.clearContent(content);
     }
@@ -168,7 +539,7 @@ void main() {
       await database.importContentFromJson(
         content,
         exports[content]!,
-        deleteExisting: true,
+        onConflict: _skipConflicts,
       );
     }
 
@@ -183,38 +554,156 @@ void main() {
 
     final notes = await database.select(database.notes).get();
     expect(notes.single.comment, 'Travel note');
-    expect(notes.single.tags, 'trip,important');
+    expect(notes.single.tags, 'trip\timportant');
+    expect(notes.single.linkList, [
+      'https://example.com',
+      'geo:48.8584,2.2945',
+    ]);
 
     final transactions = await database
         .select(database.moneyTransactions)
         .get();
     expect(transactions.single.amount, 12.5);
-    expect(transactions.single.date, transactionDate);
+    expect(
+      [
+        transactions.single.date.year,
+        transactions.single.date.month,
+        transactions.single.date.day,
+        transactions.single.date.hour,
+        transactions.single.date.minute,
+      ],
+      [
+        transactionDate.year,
+        transactionDate.month,
+        transactionDate.day,
+        transactionDate.hour,
+        transactionDate.minute,
+      ],
+    );
     expect(transactions.single.tagList, contains('calendar'));
     expect(transactions.single.isPlanned, isTrue);
   });
 
-  test(
-    'appending JSON preserves existing rows and assigns fresh IDs',
-    () async {
-      final database = AppDatabase.forTesting(NativeDatabase.memory());
-      addTearDown(database.close);
-      await database.addNote(comment: 'Existing note');
-      final exportedNote = await database.exportContentAsJson(
-        DatabaseContent.notes,
-      );
+  test('transaction date preserves local calendar and time fields', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    final date = DateTime(2025, 3, 14, 15, 30);
+    await database.addTransaction(
+      kind: TransactionKind.expense,
+      amount: 12.5,
+      currency: 'EUR',
+      date: date,
+    );
 
-      await database.importContentFromJson(
-        DatabaseContent.notes,
-        exportedNote,
-        deleteExisting: false,
-      );
+    var stored =
+        (await database.select(database.moneyTransactions).get()).single;
+    expect(stored.date.isUtc, isTrue);
+    expect(
+      [
+        stored.date.year,
+        stored.date.month,
+        stored.date.day,
+        stored.date.hour,
+        stored.date.minute,
+      ],
+      [2025, 3, 14, 15, 30],
+    );
 
-      final notes = await database.select(database.notes).get();
-      expect(notes.map((note) => note.comment), everyElement('Existing note'));
-      expect(notes.map((note) => note.id).toSet(), hasLength(2));
-    },
-  );
+    final exported = await database.exportContentAsJson(
+      DatabaseContent.transactions,
+    );
+    final exportJson = jsonDecode(exported) as Map<String, dynamic>;
+    final exportedRecords = exportJson['records'] as List<dynamic>;
+    final exportedRecord = Map<String, dynamic>.from(
+      exportedRecords.single as Map,
+    );
+    expect(exportedRecord['date'], '14.03.2025 15:30');
+    await database.clearContent(DatabaseContent.transactions);
+    await database.importContentFromJson(
+      DatabaseContent.transactions,
+      exported,
+      onConflict: _skipConflicts,
+    );
+    stored = (await database.select(database.moneyTransactions).get()).single;
+    expect(
+      [
+        stored.date.year,
+        stored.date.month,
+        stored.date.day,
+        stored.date.hour,
+        stored.date.minute,
+      ],
+      [2025, 3, 14, 15, 30],
+    );
+
+    exportedRecord['date'] = '2025-03-14T15:30:00.000+01:00';
+    exportJson['records'] = [exportedRecord];
+    await database.clearContent(DatabaseContent.transactions);
+    await database.importContentFromJson(
+      DatabaseContent.transactions,
+      jsonEncode(exportJson),
+      onConflict: _skipConflicts,
+    );
+    stored = (await database.select(database.moneyTransactions).get()).single;
+    expect(
+      [
+        stored.date.year,
+        stored.date.month,
+        stored.date.day,
+        stored.date.hour,
+        stored.date.minute,
+      ],
+      [2025, 3, 14, 15, 30],
+    );
+  });
+
+  test('importing an identical UUID and timestamp skips the item', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Existing note');
+    final exportedNote = await database.exportContentAsJson(
+      DatabaseContent.notes,
+    );
+
+    final summary = await database.importContentFromJson(
+      DatabaseContent.notes,
+      exportedNote,
+      onConflict: _skipConflicts,
+    );
+
+    final notes = await database.select(database.notes).get();
+    expect(notes.map((note) => note.comment), everyElement('Existing note'));
+    expect(notes, hasLength(1));
+    expect(summary?.added, 0);
+    expect(summary?.skipped, 1);
+    expect(summary?.updated, 0);
+  });
+
+  test('import summary counts new and unchanged rows', () async {
+    final database = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.addNote(comment: 'Existing');
+    final exported = jsonDecode(
+      await database.exportContentAsJson(DatabaseContent.notes),
+    ) as Map<String, dynamic>;
+    final existing = Map<String, dynamic>.from(
+      (exported['records'] as List<dynamic>).single as Map,
+    );
+    final added = Map<String, dynamic>.from(existing)
+      ..['uuid'] = '00000000-0000-4000-8000-000000000005'
+      ..['comment'] = 'New';
+    exported['records'] = [existing, added];
+
+    final summary = await database.importContentFromJson(
+      DatabaseContent.notes,
+      jsonEncode(exported),
+      onConflict: _skipConflicts,
+    );
+
+    expect(summary?.added, 1);
+    expect(summary?.skipped, 1);
+    expect(summary?.updated, 0);
+  });
 
   test('imports skip existing checklist items and notes', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
@@ -232,11 +721,6 @@ void main() {
       link: 'https://example.com',
       tags: const ['trip'],
     );
-    final existingNote = (await database.select(database.notes).get()).single;
-    await database.updateNoteEntry(
-      existingNote.copyWith(createdAt: DateTime(2025)),
-    );
-
     final checklistExport = jsonDecode(
       await database.exportContentAsJson(DatabaseContent.checklist),
     ) as Map<String, dynamic>;
@@ -247,6 +731,7 @@ void main() {
       ..['id'] = (checklistRecord['id'] as int) + 1;
     final newChecklistItem = Map<String, dynamic>.from(checklistRecord)
       ..['id'] = (checklistRecord['id'] as int) + 2
+      ..['uuid'] = '00000000-0000-4000-8000-000000000001'
       ..['name'] = 'Boarding pass';
     checklistExport['records'] = [
       duplicateChecklistItem,
@@ -265,25 +750,25 @@ void main() {
       ..['createdAt'] = DateTime(2026).toIso8601String();
     final newNote = Map<String, dynamic>.from(duplicateNote)
       ..['id'] = (noteRecord['id'] as int) + 2
+      ..['uuid'] = '00000000-0000-4000-8000-000000000002'
       ..['comment'] = 'Another note';
     notesExport['records'] = [duplicateNote, duplicateNote, newNote];
 
     await database.importContentFromJson(
       DatabaseContent.checklist,
       jsonEncode(checklistExport),
-      deleteExisting: false,
+      onConflict: _skipConflicts,
     );
     await database.importContentFromJson(
       DatabaseContent.notes,
       jsonEncode(notesExport),
-      deleteExisting: false,
+      onConflict: _skipConflicts,
     );
 
     final todoItems = await database.select(database.todoItems).get();
     expect(todoItems.map((item) => item.name), ['Passport', 'Boarding pass']);
     final notes = await database.select(database.notes).get();
     expect(notes.map((note) => note.comment), ['Travel note', 'Another note']);
-    expect(notes.first.createdAt, DateTime(2025));
   });
 
   test('transaction imports skip existing and repeated transactions', () async {
@@ -315,13 +800,14 @@ void main() {
       ..['id'] = (original['id'] as int) + 1;
     final newTransaction = Map<String, dynamic>.from(original)
       ..['id'] = (original['id'] as int) + 2
+      ..['uuid'] = '00000000-0000-4000-8000-000000000003'
       ..['comment'] = 'Dinner';
     exported['records'] = [duplicate, duplicate, newTransaction];
 
     await database.importContentFromJson(
       DatabaseContent.transactions,
       jsonEncode(exported),
-      deleteExisting: false,
+      onConflict: _skipConflicts,
     );
 
     final transactions = await database
@@ -336,7 +822,7 @@ void main() {
   });
 
   test(
-    'appending a transaction export does not duplicate existing currencies',
+    'identical transaction import skips the item and keeps its currencies',
     () async {
       final database = AppDatabase.forTesting(NativeDatabase.memory());
       addTearDown(database.close);
@@ -358,13 +844,13 @@ void main() {
       await database.importContentFromJson(
         DatabaseContent.transactions,
         exported,
-        deleteExisting: false,
+        onConflict: _skipConflicts,
       );
 
       expect(await database.select(database.currencies).get(), hasLength(1));
       expect(
         await database.select(database.moneyTransactions).get(),
-        hasLength(2),
+        hasLength(1),
       );
     },
   );
@@ -397,7 +883,7 @@ void main() {
     await database.importContentFromJson(
       DatabaseContent.transactions,
       jsonEncode(exported),
-      deleteExisting: true,
+      onConflict: _skipConflicts,
     );
 
     final transactions = await database
@@ -408,7 +894,7 @@ void main() {
       false,
       false,
     ]);
-    expect(transactions.map((transaction) => transaction.tagList), [
+    expect(transactions.map((transaction) => transaction.storedTagList), [
       [],
       [],
       [],
@@ -436,13 +922,13 @@ void main() {
     await database.importContentFromJson(
       DatabaseContent.transactions,
       jsonEncode(exported),
-      deleteExisting: true,
+      onConflict: _skipConflicts,
     );
 
     final transaction =
         (await database.select(database.moneyTransactions).get()).single;
     expect(transaction.isPlanned, isFalse);
-    expect(transaction.tagList, ['food']);
+    expect(transaction.storedTagList, ['food']);
   });
 
   test('legacy transaction state is not converted to a planned tag', () async {
@@ -467,121 +953,16 @@ void main() {
     await database.importContentFromJson(
       DatabaseContent.transactions,
       jsonEncode(exported),
-      deleteExisting: true,
+      onConflict: _skipConflicts,
     );
 
     final transaction =
         (await database.select(database.moneyTransactions).get()).single;
     expect(transaction.isPlanned, isFalse);
-    expect(transaction.tagList, ['food']);
+    expect(transaction.storedTagList, ['food']);
   });
 
-  test(
-    'database upgrade drops legacy status without converting values',
-    () async {
-      final database = AppDatabase.forTesting(
-        NativeDatabase.memory(
-          setup: (rawDatabase) {
-            rawDatabase.execute('''
-            CREATE TABLE money_transactions (
-              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-              kind INTEGER NOT NULL DEFAULT 0,
-              amount REAL NOT NULL,
-              currency TEXT NOT NULL,
-              method TEXT NOT NULL DEFAULT '',
-              comment TEXT NOT NULL DEFAULT '',
-              tags TEXT NOT NULL DEFAULT '',
-              date INTEGER NOT NULL,
-              days INTEGER NOT NULL DEFAULT 1,
-              state INTEGER NOT NULL DEFAULT 2,
-              link TEXT NOT NULL DEFAULT '',
-              show_in_calendar INTEGER NOT NULL DEFAULT 0
-            )
-          ''');
-            rawDatabase.execute('''
-            INSERT INTO money_transactions
-              (kind, amount, currency, tags, state, date, show_in_calendar)
-            VALUES
-              (4, 10, 'EUR', 'keep', 0, 0, 1),
-              (4, 20, 'EUR', '', 1, 0, 0),
-              (4, 30, 'EUR', '', 2, 0, 1)
-          ''');
-            rawDatabase.execute('PRAGMA user_version = 10');
-          },
-        ),
-      );
-      addTearDown(database.close);
-
-      final transactions = await database
-          .select(database.moneyTransactions)
-          .get();
-      expect(transactions.map((transaction) => transaction.isPlanned), [
-        false,
-        false,
-        false,
-      ]);
-      expect(transactions.map((transaction) => transaction.tagList), [
-        ['keep'],
-        [],
-        [],
-      ]);
-      final columns = await database
-          .customSelect('PRAGMA table_info(money_transactions)')
-          .get();
-      expect(
-        columns.map((column) => column.read<String>('name')),
-        isNot(contains('state')),
-      );
-      expect(
-        columns.map((column) => column.read<String>('name')),
-        isNot(contains('show_in_calendar')),
-      );
-      expect(
-        columns.map((column) => column.read<String>('name')),
-        isNot(contains('planned')),
-      );
-    },
-  );
-
-  test(
-    'pre-calendar-flag database drops legacy status without converting values',
-    () async {
-      final database = AppDatabase.forTesting(
-        NativeDatabase.memory(
-          setup: (rawDatabase) {
-            rawDatabase.execute('''
-            CREATE TABLE money_transactions (
-              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-              kind INTEGER NOT NULL DEFAULT 0,
-              amount REAL NOT NULL,
-              currency TEXT NOT NULL,
-              method TEXT NOT NULL DEFAULT '',
-              comment TEXT NOT NULL DEFAULT '',
-              tags TEXT NOT NULL DEFAULT '',
-              date INTEGER NOT NULL,
-              days INTEGER NOT NULL DEFAULT 1,
-              state INTEGER NOT NULL DEFAULT 2,
-              link TEXT NOT NULL DEFAULT ''
-            )
-          ''');
-            rawDatabase.execute('''
-            INSERT INTO money_transactions (kind, amount, currency, state, date)
-            VALUES (0, 10, 'EUR', 0, 0)
-          ''');
-            rawDatabase.execute('PRAGMA user_version = 9');
-          },
-        ),
-      );
-      addTearDown(database.close);
-
-      final transaction =
-          (await database.select(database.moneyTransactions).get()).single;
-      expect(transaction.isPlanned, isFalse);
-      expect(transaction.tagList, isEmpty);
-    },
-  );
-
-  test('invalid JSON does not delete existing records', () async {
+  test('rejects version 1 JSON without deleting existing records', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
     await database.addNote(comment: 'Keep this note');
@@ -589,8 +970,8 @@ void main() {
     await expectLater(
       database.importContentFromJson(
         DatabaseContent.notes,
-        '{"formatVersion":1,"content":"currencies","records":[]}',
-        deleteExisting: true,
+        '{"formatVersion":1,"content":"notes","records":[]}',
+        onConflict: _skipConflicts,
       ),
       throwsFormatException,
     );

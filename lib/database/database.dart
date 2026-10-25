@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -6,9 +7,74 @@ import 'package:drift_flutter/drift_flutter.dart';
 import 'database_file_deleter_stub.dart'
     if (dart.library.io) 'database_file_deleter_io.dart'
     as file_deleter;
+import '../utils/date_format.dart';
 part 'database.g.dart';
 
 const defaultDatabaseName = 'travel_assist_db';
+const databaseListSeparator = '\t';
+const _jsonExportFormatVersion = 2;
+final _secureRandom = Random.secure();
+
+String _newUuid() {
+  final bytes = List<int>.generate(16, (_) => _secureRandom.nextInt(256));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
+  return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+      '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+      '${hex.substring(20)}';
+}
+
+bool _sameStoredTimestamp(DateTime first, DateTime second) =>
+    first.millisecondsSinceEpoch == second.millisecondsSinceEpoch;
+
+int _nowAsMilliseconds() => DateTime.now().millisecondsSinceEpoch;
+
+int _nowAsTimezoneIndependentSeconds() {
+  final now = DateTime.now();
+  return DateTime.utc(
+        now.year,
+        now.month,
+        now.day,
+        now.hour,
+        now.minute,
+        now.second,
+      ).millisecondsSinceEpoch ~/
+      1000;
+}
+
+class _DateTimeMillisecondsConverter extends TypeConverter<DateTime, int> {
+  const _DateTimeMillisecondsConverter();
+
+  @override
+  DateTime fromSql(int fromDb) => DateTime.fromMillisecondsSinceEpoch(fromDb);
+
+  @override
+  int toSql(DateTime value) => value.millisecondsSinceEpoch;
+}
+
+class _TimezoneIndependentDateTimeConverter
+    extends TypeConverter<DateTime, int> {
+  const _TimezoneIndependentDateTimeConverter();
+
+  @override
+  DateTime fromSql(int fromDb) =>
+      DateTime.fromMillisecondsSinceEpoch(fromDb * 1000, isUtc: true);
+
+  @override
+  int toSql(DateTime value) =>
+      DateTime.utc(
+        value.year,
+        value.month,
+        value.day,
+        value.hour,
+        value.minute,
+        value.second,
+      ).millisecondsSinceEpoch ~/
+      1000;
+}
 
 class DatabaseProfile {
   final String id;
@@ -17,8 +83,61 @@ class DatabaseProfile {
   const DatabaseProfile({required this.id, required this.name});
 }
 
+enum ImportConflictResolution {
+  skip,
+  overwrite,
+  skipAll,
+  overwriteAll,
+  cancelImport,
+}
+
+class ImportConflict {
+  final DatabaseContent content;
+  final String uuid;
+  final String? comment;
+  final String? existingComment;
+  final DateTime existingLastModified;
+  final DateTime incomingLastModified;
+
+  const ImportConflict({
+    required this.content,
+    required this.uuid,
+    this.comment,
+    this.existingComment,
+    required this.existingLastModified,
+    required this.incomingLastModified,
+  });
+}
+
+class ImportSummary {
+  final int added;
+  final int skipped;
+  final int updated;
+
+  const ImportSummary({
+    required this.added,
+    required this.skipped,
+    required this.updated,
+  });
+}
+
+typedef ImportConflictResolver = Future<ImportConflictResolution> Function(
+  ImportConflict conflict,
+);
+
+class _ImportConflictState {
+  ImportConflictResolution? applyToAll;
+  int added = 0;
+  int skipped = 0;
+  int updated = 0;
+}
+
 class Currencies extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().clientDefault(_newUuid)();
+  IntColumn get lastModified => integer()
+      .map(const _DateTimeMillisecondsConverter())
+      .clientDefault(_nowAsMilliseconds)();
   TextColumn get name => text()();
   TextColumn get shortName => text()();
   RealColumn get rate => real()();
@@ -27,6 +146,10 @@ class Currencies extends Table {
 
 class TodoItems extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().clientDefault(_newUuid)();
+  IntColumn get lastModified => integer()
+      .map(const _DateTimeMillisecondsConverter())
+      .clientDefault(_nowAsMilliseconds)();
   TextColumn get name => text()();
   TextColumn get category => text().withDefault(const Constant('General'))();
   TextColumn get comment => text().withDefault(const Constant(''))();
@@ -39,15 +162,22 @@ class TodoItems extends Table {
 
 class Notes extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().clientDefault(_newUuid)();
+  IntColumn get lastModified => integer()
+      .map(const _DateTimeMillisecondsConverter())
+      .clientDefault(_nowAsMilliseconds)();
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get link => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DataClassName('MoneyTransaction')
 class MoneyTransactions extends Table {
   IntColumn get id => integer().autoIncrement()();
+  TextColumn get uuid => text().clientDefault(_newUuid)();
+  IntColumn get lastModified => integer()
+      .map(const _DateTimeMillisecondsConverter())
+      .clientDefault(_nowAsMilliseconds)();
   IntColumn get kind =>
       integer().withDefault(const Constant(0))(); // TransactionKind.index
   RealColumn get amount => real()();
@@ -56,7 +186,9 @@ class MoneyTransactions extends Table {
       text().withDefault(const Constant(''))(); // empty or 'cash' means cash
   TextColumn get comment => text().withDefault(const Constant(''))();
   TextColumn get tags => text().withDefault(const Constant(''))();
-  DateTimeColumn get date => dateTime().withDefault(currentDateAndTime)();
+  IntColumn get date => integer()
+      .map(const _TimezoneIndependentDateTimeConverter())
+      .clientDefault(_nowAsTimezoneIndependentSeconds)();
   // Number of days the entry covers: for expenses the days it counts in the daily average
   // (0 = not included, 1 = default), for e.g. a hotel booking its length.
   IntColumn get days => integer().withDefault(const Constant(1))();
@@ -72,20 +204,13 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-      },
-      onUpgrade: (m, from, to) async {
-        if (from < 13) {
-          // Drop legacy status columns without converting their values to tags.
-          // ignore: experimental_member_use
-          await m.alterTable(TableMigration(moneyTransactions));
-        }
       },
     );
   }
@@ -131,7 +256,10 @@ class AppDatabase extends _$AppDatabase {
   }) async {
     if (isHome) {
       await (update(currencies)..where((t) => t.isHome.equals(true))).write(
-        const CurrenciesCompanion(isHome: Value(false)),
+        CurrenciesCompanion(
+          isHome: const Value(false),
+          lastModified: Value(DateTime.now()),
+        ),
       );
     }
     return into(currencies).insert(
@@ -145,7 +273,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<bool> updateCurrencyEntry(Currency currency) {
-    return update(currencies).replace(currency);
+    return update(currencies)
+        .replace(currency.copyWith(lastModified: DateTime.now()));
   }
 
   Future<int> deleteCurrency(int id) {
@@ -154,10 +283,17 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setHomeCurrency(int id) async {
     await transaction(() async {
-      await update(currencies)
-          .write(const CurrenciesCompanion(isHome: Value(false)));
+      await update(currencies).write(
+        CurrenciesCompanion(
+          isHome: const Value(false),
+          lastModified: Value(DateTime.now()),
+        ),
+      );
       await (update(currencies)..where((t) => t.id.equals(id))).write(
-        const CurrenciesCompanion(isHome: Value(true)),
+        CurrenciesCompanion(
+          isHome: const Value(true),
+          lastModified: Value(DateTime.now()),
+        ),
       );
     });
   }
@@ -230,7 +366,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<bool> updateTodoItemEntry(TodoItem item) {
-    return update(todoItems).replace(item);
+    return update(todoItems)
+        .replace(item.copyWith(lastModified: DateTime.now()));
   }
 
   Future<int> deleteTodoItem(int id) {
@@ -239,14 +376,17 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setTodoItemState(int id, int state) {
     return (update(todoItems)..where((t) => t.id.equals(id))).write(
-      TodoItemsCompanion(state: Value(state)),
+      TodoItemsCompanion(
+        state: Value(state),
+        lastModified: Value(DateTime.now()),
+      ),
     );
   }
 
   // --- Note Operations ---
   Stream<List<Note>> watchAllNotes() {
     return (select(notes)..orderBy([
-          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
         ]))
         .watch();
   }
@@ -256,7 +396,7 @@ class AppDatabase extends _$AppDatabase {
     final tagSet = <String>{};
     for (final note in allNotes) {
       final tags = note.tags
-          .split(',')
+          .split(databaseListSeparator)
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty);
       tagSet.addAll(tags);
@@ -273,7 +413,7 @@ class AppDatabase extends _$AppDatabase {
     final tagString = tags
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
-        .join(',');
+        .join(databaseListSeparator);
     return into(notes).insert(
       NotesCompanion.insert(
         comment: Value(comment),
@@ -284,7 +424,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<bool> updateNoteEntry(Note note) {
-    return update(notes).replace(note);
+    return update(notes).replace(note.copyWith(lastModified: DateTime.now()));
   }
 
   Future<int> deleteNote(int id) {
@@ -323,7 +463,10 @@ class AppDatabase extends _$AppDatabase {
         method: Value(method.trim()),
         comment: Value(comment),
         tags: Value(
-          tags.map((e) => e.trim()).where((e) => e.isNotEmpty).join(','),
+          tags
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .join(databaseListSeparator),
         ),
         date: Value(date ?? DateTime.now()),
         days: Value(days),
@@ -333,7 +476,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<bool> updateTransactionEntry(MoneyTransaction transaction) {
-    return update(moneyTransactions).replace(transaction);
+    return update(moneyTransactions)
+        .replace(transaction.copyWith(lastModified: DateTime.now()));
   }
 
   Future<int> deleteTransaction(int id) {
@@ -367,13 +511,13 @@ class AppDatabase extends _$AppDatabase {
       ).get()).map((row) => row.toJson()).toList(),
       DatabaseContent.notes => (await select(
         notes,
-      ).get()).map((row) => row.toJson()).toList(),
+      ).get()).map(_noteToJson).toList(),
       DatabaseContent.transactions => (await select(
         moneyTransactions,
-      ).get()).map((row) => row.toJson()).toList(),
+      ).get()).map(_transactionToJson).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert({
-      'formatVersion': 1,
+      'formatVersion': _jsonExportFormatVersion,
       'content': content.name,
       'exportedAt': DateTime.now().toIso8601String(),
       'records': records,
@@ -384,14 +528,14 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> importContentFromJson(
+  Future<ImportSummary?> importContentFromJson(
     DatabaseContent content,
     String json, {
-    required bool deleteExisting,
+    required ImportConflictResolver onConflict,
   }) async {
     final decoded = jsonDecode(json);
     if (decoded is! Map<String, dynamic> ||
-        decoded['formatVersion'] != 1 ||
+        decoded['formatVersion'] != _jsonExportFormatVersion ||
         decoded['content'] != content.name ||
         decoded['records'] is! List ||
         (content == DatabaseContent.transactions &&
@@ -400,198 +544,253 @@ class AppDatabase extends _$AppDatabase {
       throw FormatException('The file is not a valid ${content.label} export.');
     }
 
+    final actions = <Future<void> Function()>[];
+    final conflictState = _ImportConflictState();
     switch (content) {
       case DatabaseContent.currencies:
-        final rows = _parseRecords(
-          decoded['records'],
-          Currency.fromJson,
-          content,
-        );
-        await transaction(() async {
-          final preserveIds = await _prepareImport(content, deleteExisting);
-          await _insertCurrencyRows(rows, preserveIds: preserveIds);
-        });
+        if (!await _stageImportRows(
+          content: content,
+          rows: _parseRecords(decoded['records'], Currency.fromJson, content),
+          existing: await select(currencies).get(),
+          uuidOf: (row) => row.uuid,
+          lastModifiedOf: (row) => row.lastModified,
+          commentOf: (_) => null,
+          onConflict: onConflict,
+          conflictState: conflictState,
+          actions: actions,
+          write: _writeImportedCurrency,
+        )) {
+          return null;
+        }
       case DatabaseContent.checklist:
-        final rows = _parseRecords(
-          decoded['records'],
-          TodoItem.fromJson,
-          content,
-        );
-        await transaction(() async {
-          final preserveIds = await _prepareImport(content, deleteExisting);
-          final existingItems = (await select(todoItems).get())
-              .map(
-                (item) => (
-                  item.name,
-                  item.category,
-                  item.comment,
-                  item.quantity,
-                  item.used,
-                  item.state,
-                ),
-              )
-              .toSet();
-          for (final row in rows) {
-            final key = (
-              row.name,
-              row.category,
-              row.comment,
-              row.quantity,
-              row.used,
-              row.state,
-            );
-            if (!existingItems.add(key)) continue;
-            await into(todoItems).insert(
-              preserveIds
-                  ? row.toCompanion(false)
-                  : TodoItemsCompanion.insert(
-                      name: row.name,
-                      category: Value(row.category),
-                      comment: Value(row.comment),
-                      quantity: Value(row.quantity),
-                      used: Value(row.used),
-                      state: Value(row.state),
-                    ),
-            );
-          }
-        });
+        if (!await _stageImportRows(
+          content: content,
+          rows: _parseRecords(decoded['records'], TodoItem.fromJson, content),
+          existing: await select(todoItems).get(),
+          uuidOf: (row) => row.uuid,
+          lastModifiedOf: (row) => row.lastModified,
+          commentOf: (row) => row.comment,
+          onConflict: onConflict,
+          conflictState: conflictState,
+          actions: actions,
+          write: _writeImportedTodoItem,
+        )) {
+          return null;
+        }
       case DatabaseContent.notes:
-        final rows = _parseRecords(decoded['records'], Note.fromJson, content);
-        await transaction(() async {
-          final preserveIds = await _prepareImport(content, deleteExisting);
-          final existingNotes = (await select(
-            notes,
-          ).get()).map((note) => (note.comment, note.link, note.tags)).toSet();
-          for (final row in rows) {
-            if (!existingNotes.add((row.comment, row.link, row.tags))) continue;
-            await into(notes).insert(
-              preserveIds
-                  ? row.toCompanion(false)
-                  : NotesCompanion.insert(
-                      comment: Value(row.comment),
-                      link: Value(row.link),
-                      tags: Value(row.tags),
-                      createdAt: Value(row.createdAt),
-                    ),
-            );
-          }
-        });
+        if (!await _stageImportRows(
+          content: content,
+          rows: _parseRecords(decoded['records'], Note.fromJson, content),
+          existing: await select(notes).get(),
+          uuidOf: (row) => row.uuid,
+          lastModifiedOf: (row) => row.lastModified,
+          commentOf: (row) => row.comment,
+          onConflict: onConflict,
+          conflictState: conflictState,
+          actions: actions,
+          write: _writeImportedNote,
+        )) {
+          return null;
+        }
       case DatabaseContent.transactions:
-        final includesCurrencies = decoded.containsKey('currencies');
-        final currencyRows = includesCurrencies
-            ? _parseRecords(
+        if (decoded.containsKey('currencies') &&
+            !await _stageImportRows(
+              content: DatabaseContent.currencies,
+              rows: _parseRecords(
                 decoded['currencies'],
                 Currency.fromJson,
                 DatabaseContent.currencies,
-              )
-            : <Currency>[];
-        final rows = _parseRecords(
-          decoded['records'],
-          MoneyTransaction.fromJson,
-          content,
-        );
-        await transaction(() async {
-          if (includesCurrencies) {
-            final preserveCurrencyIds = await _prepareImport(
-              DatabaseContent.currencies,
-              deleteExisting,
-            );
-            final existingCodes = (await select(
-              currencies,
-            ).get()).map((currency) => currency.shortName).toSet();
-            final currenciesToImport = deleteExisting
-                ? currencyRows
-                : currencyRows
-                      .where(
-                        (currency) =>
-                            !existingCodes.contains(currency.shortName),
-                      )
-                      .toList();
-            await _insertCurrencyRows(
-              currenciesToImport,
-              preserveIds: preserveCurrencyIds,
-            );
-          }
-          final preserveIds = await _prepareImport(content, deleteExisting);
-          final existingTransactions = (await select(moneyTransactions).get())
-              .map(
-                (transaction) => (
-                  transaction.kind,
-                  transaction.amount,
-                  transaction.currency,
-                  transaction.method,
-                  transaction.comment,
-                  transaction.tags,
-                  transaction.date,
-                  transaction.days,
-                  transaction.link,
-                ),
-              )
-              .toSet();
-          for (final row in rows) {
-            final key = (
-              row.kind,
-              row.amount,
-              row.currency,
-              row.method,
-              row.comment,
-              row.tags,
-              row.date,
-              row.days,
-              row.link,
-            );
-            if (!existingTransactions.add(key)) continue;
-            await into(moneyTransactions).insert(
-              preserveIds
-                  ? row.toCompanion(false)
-                  : MoneyTransactionsCompanion.insert(
-                      kind: Value(row.kind),
-                      amount: row.amount,
-                      currency: row.currency,
-                      method: Value(row.method),
-                      comment: Value(row.comment),
-                      tags: Value(row.tags),
-                      date: Value(row.date),
-                      days: Value(row.days),
-                      link: Value(row.link),
-                    ),
-            );
-          }
-        });
+              ),
+              existing: await select(currencies).get(),
+              uuidOf: (row) => row.uuid,
+              lastModifiedOf: (row) => row.lastModified,
+              commentOf: (_) => null,
+              onConflict: onConflict,
+              conflictState: conflictState,
+              actions: actions,
+              write: _writeImportedCurrency,
+            )) {
+          return null;
+        }
+        if (!await _stageImportRows(
+          content: content,
+          rows: _parseRecords(
+            decoded['records'],
+            _parseTimezoneIndependentTransaction,
+            content,
+          ),
+          existing: await select(moneyTransactions).get(),
+          uuidOf: (row) => row.uuid,
+          lastModifiedOf: (row) => row.lastModified,
+          commentOf: (row) => row.comment,
+          onConflict: onConflict,
+          conflictState: conflictState,
+          actions: actions,
+          write: _writeImportedTransaction,
+        )) {
+          return null;
+        }
     }
+
+    await transaction(() async {
+      for (final action in actions) {
+        await action();
+      }
+    });
+    return ImportSummary(
+      added: conflictState.added,
+      skipped: conflictState.skipped,
+      updated: conflictState.updated,
+    );
   }
 
-  Future<void> _insertCurrencyRows(
-    List<Currency> rows, {
-    required bool preserveIds,
+  Future<bool> _stageImportRows<T>({
+    required DatabaseContent content,
+    required List<T> rows,
+    required List<T> existing,
+    required String Function(T) uuidOf,
+    required DateTime Function(T) lastModifiedOf,
+    required String? Function(T) commentOf,
+    required ImportConflictResolver onConflict,
+    required _ImportConflictState conflictState,
+    required List<Future<void> Function()> actions,
+    required Future<void> Function(T row, bool insert) write,
   }) async {
-    var hasHomeCurrency = (await select(
-      currencies,
-    ).get()).any((currency) => currency.isHome);
+    final rowsByUuid = {for (final row in existing) uuidOf(row): row};
     for (final row in rows) {
-      final isHome = row.isHome && !hasHomeCurrency;
-      if (isHome) hasHomeCurrency = true;
-      final currency = row.copyWith(isHome: isHome);
-      await into(currencies).insert(
-        preserveIds
-            ? currency.toCompanion(false)
-            : CurrenciesCompanion.insert(
-                name: currency.name,
-                shortName: currency.shortName,
-                rate: currency.rate,
-                isHome: Value(currency.isHome),
-              ),
+      final uuid = uuidOf(row);
+      final current = rowsByUuid[uuid];
+      if (current == null) {
+        rowsByUuid[uuid] = row;
+        actions.add(() => write(row, true));
+        conflictState.added++;
+        continue;
+      }
+      final currentModified = lastModifiedOf(current);
+      final incomingModified = lastModifiedOf(row);
+      if (_sameStoredTimestamp(currentModified, incomingModified)) {
+        conflictState.skipped++;
+        continue;
+      }
+
+      var resolution =
+          conflictState.applyToAll ??
+          await onConflict(
+            ImportConflict(
+              content: content,
+              uuid: uuid,
+              comment: commentOf(row),
+              existingComment: commentOf(current),
+              existingLastModified: currentModified,
+              incomingLastModified: incomingModified,
+            ),
+          );
+      if (resolution == ImportConflictResolution.skipAll) {
+        conflictState.applyToAll = ImportConflictResolution.skip;
+        resolution = ImportConflictResolution.skip;
+      } else if (resolution == ImportConflictResolution.overwriteAll) {
+        conflictState.applyToAll = ImportConflictResolution.overwrite;
+        resolution = ImportConflictResolution.overwrite;
+      }
+      if (resolution == ImportConflictResolution.cancelImport) return false;
+      if (resolution == ImportConflictResolution.overwrite) {
+        rowsByUuid[uuid] = row;
+        actions.add(() => write(row, false));
+        conflictState.updated++;
+      } else {
+        conflictState.skipped++;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _writeImportedCurrency(Currency row, bool insert) async {
+    if (row.isHome) {
+      await (update(currencies)..where((t) => t.isHome.equals(true))).write(
+        CurrenciesCompanion(
+          isHome: const Value(false),
+          lastModified: Value(DateTime.now()),
+        ),
       );
     }
+    final companion = CurrenciesCompanion(
+      uuid: Value(row.uuid),
+      lastModified: Value(row.lastModified),
+      name: Value(row.name),
+      shortName: Value(row.shortName),
+      rate: Value(row.rate),
+      isHome: Value(row.isHome),
+    );
+    if (insert) {
+      await into(currencies).insert(companion);
+    } else {
+      await (update(
+        currencies,
+      )..where((t) => t.uuid.equals(row.uuid))).write(companion);
+    }
   }
 
-  Future<bool> _prepareImport(
-    DatabaseContent content,
-    bool deleteExisting,
+  Future<void> _writeImportedTodoItem(TodoItem row, bool insert) async {
+    final companion = TodoItemsCompanion(
+      uuid: Value(row.uuid),
+      lastModified: Value(row.lastModified),
+      name: Value(row.name),
+      category: Value(row.category),
+      comment: Value(row.comment),
+      quantity: Value(row.quantity),
+      used: Value(row.used),
+      state: Value(row.state),
+    );
+    if (insert) {
+      await into(todoItems).insert(companion);
+    } else {
+      await (update(
+        todoItems,
+      )..where((t) => t.uuid.equals(row.uuid))).write(companion);
+    }
+  }
+
+  Future<void> _writeImportedNote(Note row, bool insert) async {
+    final companion = NotesCompanion(
+      uuid: Value(row.uuid),
+      lastModified: Value(row.lastModified),
+      comment: Value(row.comment),
+      link: Value(row.link),
+      tags: Value(row.tags),
+    );
+    if (insert) {
+      await into(notes).insert(companion);
+    } else {
+      await (update(
+        notes,
+      )..where((t) => t.uuid.equals(row.uuid))).write(companion);
+    }
+  }
+
+  Future<void> _writeImportedTransaction(
+    MoneyTransaction row,
+    bool insert,
   ) async {
-    final hadExisting = await countContent(content) > 0;
-    if (deleteExisting) await _deleteContent(content);
-    return deleteExisting || !hadExisting;
+    final companion = MoneyTransactionsCompanion(
+      uuid: Value(row.uuid),
+      lastModified: Value(row.lastModified),
+      kind: Value(row.kind),
+      amount: Value(row.amount),
+      currency: Value(row.currency),
+      method: Value(row.method),
+      comment: Value(row.comment),
+      tags: Value(row.tags),
+      date: Value(row.date),
+      days: Value(row.days),
+      link: Value(row.link),
+    );
+    if (insert) {
+      await into(moneyTransactions).insert(companion);
+    } else {
+      await (update(
+        moneyTransactions,
+      )..where((t) => t.uuid.equals(row.uuid))).write(companion);
+    }
   }
 
   Future<void> _deleteContent(DatabaseContent content) async {
@@ -624,6 +823,54 @@ List<T> _parseRecords<T>(
   ];
 }
 
+Map<String, dynamic> _noteToJson(Note note) {
+  final json = note.toJson();
+  json['link'] = note.linkList;
+  json['tags'] = note.tagList;
+  return json;
+}
+
+Map<String, dynamic> _transactionToJson(MoneyTransaction transaction) {
+  final json = transaction.toJson();
+  json['date'] = formatDateTime(transaction.date);
+  json['link'] = transaction.linkList;
+  json['tags'] = transaction.storedTagList;
+  return json;
+}
+
+MoneyTransaction _parseTimezoneIndependentTransaction(
+  Map<String, dynamic> json,
+) {
+  final record = Map<String, dynamic>.from(json);
+  final date = record['date'];
+  if (date is String) {
+    final humanDate = RegExp(r'^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$')
+        .firstMatch(date);
+    if (humanDate != null) {
+      final day = int.parse(humanDate[1]!);
+      final month = int.parse(humanDate[2]!);
+      final year = int.parse(humanDate[3]!);
+      final hour = int.parse(humanDate[4]!);
+      final minute = int.parse(humanDate[5]!);
+      final parsed = DateTime(year, month, day, hour, minute);
+      if (parsed.year != year ||
+          parsed.month != month ||
+          parsed.day != day ||
+          parsed.hour != hour ||
+          parsed.minute != minute) {
+        throw FormatException('Invalid transaction date "$date".');
+      }
+      record['date'] = parsed.toIso8601String();
+    } else {
+      record['date'] = date.replaceFirst(
+        RegExp(r'(?:Z|[+-]\d{2}(?::?\d{2})?)$', caseSensitive: false),
+        '',
+      );
+    }
+  }
+  return MoneyTransaction.fromJson(record);
+}
+
 T _parseRecord<T>(
   Object? rawRecord,
   T Function(Map<String, dynamic>) parse,
@@ -636,7 +883,37 @@ T _parseRecord<T>(
     );
   }
   try {
-    return parse(rawRecord);
+    final record = Map<String, dynamic>.from(rawRecord);
+    final separators = switch (content) {
+      DatabaseContent.notes => {
+        'link': databaseListSeparator,
+        'tags': databaseListSeparator,
+      },
+      DatabaseContent.transactions => {
+        'link': databaseListSeparator,
+        'tags': databaseListSeparator,
+      },
+      _ => const <String, String>{},
+    };
+    for (final entry in separators.entries) {
+      final value = record[entry.key];
+      if (value is! List || value.any((item) => item is! String)) {
+        throw FormatException(
+          'Record ${index + 1} in the ${content.label} file is invalid.',
+        );
+      }
+      record[entry.key] = value.join(entry.value);
+    }
+    final uuid = record['uuid'];
+    if (uuid == null || (uuid is String && uuid.trim().isEmpty)) {
+      record['uuid'] = _newUuid();
+    }
+    final lastModified = record['lastModified'];
+    if (lastModified == null ||
+        (lastModified is String && lastModified.trim().isEmpty)) {
+      record['lastModified'] = DateTime.now().toIso8601String();
+    }
+    return parse(record);
   } on FormatException {
     rethrow;
   } on TypeError {
@@ -714,8 +991,11 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   bool get isCash => method.trim().isEmpty || method == cashMethod;
 
-  List<String> get storedTagList =>
-      tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  List<String> get storedTagList => tags
+      .split(databaseListSeparator)
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 
   List<String> get editableTagList => storedTagList
       .where((tag) => tag.toLowerCase() != transactionKindTag(type))
@@ -730,16 +1010,25 @@ extension MoneyTransactionHelpers on MoneyTransaction {
     return result;
   }
 
-  List<String> get linkList =>
-      link.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  List<String> get linkList => link
+      .split(databaseListSeparator)
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 }
 
 extension NoteHelpers on Note {
-  List<String> get tagList =>
-      tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  List<String> get tagList => tags
+      .split(databaseListSeparator)
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 
-  List<String> get linkList =>
-      link.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+  List<String> get linkList => link
+      .split(databaseListSeparator)
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 
   bool get isLink => linkList.any(
     (l) =>

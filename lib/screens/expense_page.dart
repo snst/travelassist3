@@ -242,7 +242,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
           currency: _currencyCode,
           method: method,
           comment: comment,
-          tags: _tags.join(','),
+          tags: _tags.join(databaseListSeparator),
           date: _date,
           days: _averageDays,
           link: _links.joined,
