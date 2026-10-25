@@ -58,6 +58,7 @@ class CalendarPage extends StatelessWidget {
             ),
             icon: const Icon(Icons.receipt_long),
           ),
+          SizedBox(width: 16),
           IconButton(
             tooltip: 'Add Entry',
             onPressed: () => showNewEntryPicker(context, database),
@@ -369,24 +370,22 @@ class _BookingBar extends StatelessWidget {
 
   const _BookingBar({required this.booking, required this.onTap});
 
-  List<Widget> _statusIcons(Color color) => [
-    if (booking.transaction.isPlanned) ...[
-      Icon(Icons.schedule, size: 14, color: color),
-      const SizedBox(width: 3),
-    ],
-    if (booking.isBooked) ...[
-      Icon(Icons.check, size: 14, color: color),
-      const SizedBox(width: 3),
-    ],
-  ];
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final background = booking.isHotel
+    final isBookedHotel = booking.isHotel && booking.isBooked;
+    final background = isBookedHotel
+        ? (scheme.brightness == Brightness.dark
+              ? Colors.green.shade900
+              : Colors.green.shade100)
+        : booking.isHotel
         ? scheme.primaryContainer
         : scheme.tertiaryContainer;
-    final expenseForeground = booking.isHotel
+    final expenseForeground = isBookedHotel
+        ? (scheme.brightness == Brightness.dark
+              ? Colors.green.shade100
+              : Colors.green.shade900)
+        : booking.isHotel
         ? scheme.onPrimaryContainer
         : scheme.onTertiaryContainer;
     final checkIn = booking.start;
@@ -415,7 +414,6 @@ class _BookingBar extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        ..._statusIcons(expenseForeground),
                         Expanded(
                           child: Text(
                             nightsStr,
@@ -480,7 +478,6 @@ class _BookingBar extends StatelessWidget {
                 )
               : Row(
                   children: [
-                    ..._statusIcons(expenseForeground),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(

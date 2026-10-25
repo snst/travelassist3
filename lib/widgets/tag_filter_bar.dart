@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../database/database.dart';
+
 class TagFilterBar extends StatelessWidget {
   final List<String> tags;
   final List<String> selectedTags;
@@ -17,6 +19,12 @@ class TagFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (tags.isEmpty) return const SizedBox.shrink();
+
+    final orderedTags = [
+      if (tags.contains(starTag)) starTag,
+      if (tags.contains(positionTag)) positionTag,
+      ...tags.where((tag) => tag != starTag && tag != positionTag),
+    ];
 
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -47,7 +55,7 @@ class TagFilterBar extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: tags.map((tag) {
+              children: orderedTags.map((tag) {
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: FilterChip(

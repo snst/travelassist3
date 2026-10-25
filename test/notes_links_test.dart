@@ -27,7 +27,30 @@ void main() {
       await database.close();
     });
 
-    testWidgets('Note list info button opens the large text dialog', (
+    testWidgets('Swiping left does not delete a note list entry', (
+      WidgetTester tester,
+    ) async {
+      final id = await database.addNote(comment: 'Keep this note');
+
+      await tester.pumpWidget(
+        MaterialApp(home: NoteListPage(database: database)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dismissible), findsNothing);
+      await tester.drag(find.byType(ListTile), const Offset(-600, 0));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Keep this note'), findsOneWidget);
+      final notes = await database.select(database.notes).get();
+      expect(notes.map((note) => note.id), [id]);
+      expect(find.text('Note deleted'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('Tapping a note list entry opens the large text dialog', (
       WidgetTester tester,
     ) async {
       await database.addNote(
@@ -40,7 +63,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('View Info'));
+      await tester.tap(find.text('Paris trip info'));
       await tester.pumpAndSettle();
 
       expect(
@@ -64,6 +87,108 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(seconds: 1));
     });
+
+    testWidgets('Note list edit button opens the existing note editor', (
+      WidgetTester tester,
+    ) async {
+      final id = await database.addNote(
+        comment: 'Paris trip info',
+        link: 'https://example.com/trip',
+        tags: ['paris'],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: NoteListPage(database: database)),
+      );
+      await tester.pumpAndSettle();
+
+      final editButton = find.byTooltip('Edit Note');
+      expect(
+        find.descendant(of: editButton, matching: find.byIcon(Icons.edit)),
+        findsOneWidget,
+      );
+      await tester.tap(editButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+      final editor = tester.widget<NoteItemPage>(find.byType(NoteItemPage));
+      expect(editor.note?.id, id);
+      expect(editor.note?.comment, 'Paris trip info');
+      expect(editor.note?.link, 'https://example.com/trip');
+      expect(editor.note?.tagList, ['paris']);
+      expect(find.text('Edit Note'), findsOneWidget);
+      expect(find.byTooltip('Update Note'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    for (final isNew in [true, false]) {
+      testWidgets('Note item header previews unsaved info: new=$isNew', (
+        WidgetTester tester,
+      ) async {
+        Note? note;
+        if (!isNew) {
+          final id = await database.addNote(
+            comment: 'Original info',
+            link: 'https://example.com/original',
+          );
+          note = await (database.select(database.notes)
+                ..where((row) => row.id.equals(id)))
+              .getSingle();
+        }
+
+        await tester.pumpWidget(
+          MaterialApp(home: NoteItemPage(database: database, note: note)),
+        );
+        await tester.pumpAndSettle();
+
+        final commentField = find.byWidgetPredicate(
+          (widget) => widget is TextFormField,
+        ).first;
+        await tester.enterText(commentField, 'Updated info');
+        final links = tester.widget<LinkEditor>(find.byType(LinkEditor));
+        links.controller.fields.first.text = ' https://example.com/updated ';
+        links.controller.add(' ');
+        await tester.pumpAndSettle();
+
+        final headerButton = find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byTooltip('View Info'),
+        );
+        expect(headerButton, findsOneWidget);
+        await tester.tap(headerButton);
+        await tester.pumpAndSettle();
+
+        final dialog = find.byType(Dialog);
+        expect(dialog, findsOneWidget);
+        expect(
+          find.descendant(of: dialog, matching: find.text('Updated info')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: dialog,
+            matching: find.text('https://example.com/updated'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: dialog, matching: find.byTooltip('Open Link')),
+          findsOneWidget,
+        );
+        expect(find.text('Original info'), findsNothing);
+
+        await tester.tap(
+          find.descendant(of: dialog, matching: find.text('Updated info')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(Dialog), findsNothing);
+        expect(find.text('Updated info'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 1));
+      });
+    }
 
     testWidgets('Note list removes https from links below a smaller comment', (
       WidgetTester tester,

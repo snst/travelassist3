@@ -665,7 +665,30 @@ const plannedTag = 'planned';
 const bookedTag = 'booked';
 const calendarTag = 'calendar';
 const starTag = '⭐';
-const reservedTransactionTags = {plannedTag, bookedTag, calendarTag};
+const positionTag = '📍';
+const expenseTag = 'expense';
+const atmTag = 'atm';
+const countTag = 'count';
+const depositTag = 'deposit';
+const hotelTag = 'hotel';
+const reservedTransactionTags = {
+  plannedTag,
+  bookedTag,
+  calendarTag,
+  expenseTag,
+  atmTag,
+  countTag,
+  depositTag,
+  hotelTag,
+};
+
+String transactionKindTag(TransactionKind kind) => switch (kind) {
+  TransactionKind.expense => expenseTag,
+  TransactionKind.withdrawal => atmTag,
+  TransactionKind.cashCount => countTag,
+  TransactionKind.deposit => depositTag,
+  TransactionKind.hotel => hotelTag,
+};
 
 bool isReservedTransactionTag(String tag) =>
     reservedTransactionTags.contains(tag.trim().toLowerCase());
@@ -691,8 +714,21 @@ extension MoneyTransactionHelpers on MoneyTransaction {
 
   bool get isCash => method.trim().isEmpty || method == cashMethod;
 
-  List<String> get tagList =>
+  List<String> get storedTagList =>
       tags.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+  List<String> get editableTagList => storedTagList
+      .where((tag) => tag.toLowerCase() != transactionKindTag(type))
+      .toList();
+
+  List<String> get tagList {
+    final result = storedTagList;
+    final implicitTag = transactionKindTag(type);
+    if (!result.any((tag) => tag.toLowerCase() == implicitTag)) {
+      result.add(implicitTag);
+    }
+    return result;
+  }
 
   List<String> get linkList =>
       link.split('\t').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();

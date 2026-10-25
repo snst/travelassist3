@@ -6,6 +6,7 @@ class CommentInput extends StatelessWidget {
   final TextEditingController controller;
   final int maxLines;
   final bool autofocus;
+  final bool showLargeTextButton;
   final String labelText;
   final String? hintText;
   final String? Function(String?)? validator;
@@ -15,6 +16,7 @@ class CommentInput extends StatelessWidget {
     required this.controller,
     this.maxLines = 3,
     this.autofocus = false,
+    this.showLargeTextButton = false,
     this.labelText = 'Info',
     this.hintText,
     this.validator,
@@ -25,9 +27,9 @@ class CommentInput extends StatelessWidget {
     Future<void> copyText() async {
       await Clipboard.setData(ClipboardData(text: controller.text));
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Info copied to clipboard')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Info copied to clipboard')));
     }
 
     return Padding(
@@ -50,18 +52,19 @@ class CommentInput extends StatelessWidget {
                 tooltip: 'Copy info',
                 onPressed: copyText,
               ),
-              IconButton(
-                icon: const Icon(Icons.open_in_full),
-                tooltip: 'Show large text',
-                onPressed: () {
-                  FocusScope.of(context).unfocus();
-                  showLargeTextDialog(
-                    context,
-                    controller.text,
-                    emptyMessage: 'No info entered.',
-                  );
-                },
-              ),
+              if (showLargeTextButton)
+                IconButton(
+                  icon: const Icon(Icons.open_in_full),
+                  tooltip: 'Show large text',
+                  onPressed: () {
+                    FocusScope.of(context).unfocus();
+                    showLargeTextDialog(
+                      context,
+                      controller.text,
+                      emptyMessage: 'No info entered.',
+                    );
+                  },
+                ),
             ],
           ),
         ),

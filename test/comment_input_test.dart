@@ -5,8 +5,34 @@ import 'package:travelassist3/widgets/comment_input.dart';
 import 'package:travelassist3/widgets/large_text_dialog.dart';
 
 void main() {
-  testWidgets('Can show a fullscreen text dialog from another widget',
-      (tester) async {
+  for (final showLargeTextButton in <bool?>[null, false]) {
+    testWidgets('Hides large text button when option is $showLargeTextButton', (
+      tester,
+    ) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: showLargeTextButton == null
+                ? CommentInput(controller: controller)
+                : CommentInput(
+                    controller: controller,
+                    showLargeTextButton: showLargeTextButton,
+                  ),
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Show large text'), findsNothing);
+      expect(find.byTooltip('Copy info'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('Can show a fullscreen text dialog from another widget', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -31,13 +57,16 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Shows centered fullscreen info and closes when tapped',
-      (tester) async {
+  testWidgets('Shows centered fullscreen info and closes when tapped', (
+    tester,
+  ) async {
     final controller = TextEditingController(text: 'Original info');
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: CommentInput(controller: controller)),
+        home: Scaffold(
+          body: CommentInput(controller: controller, showLargeTextButton: true),
+        ),
       ),
     );
 
@@ -70,7 +99,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: CommentInput(controller: controller)),
+        home: Scaffold(
+          body: CommentInput(controller: controller, showLargeTextButton: true),
+        ),
       ),
     );
 
@@ -81,8 +112,9 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Long info is scrollable in the fullscreen view on a phone',
-      (tester) async {
+  testWidgets('Long info is scrollable in the fullscreen view on a phone', (
+    tester,
+  ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(393, 820);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -92,7 +124,9 @@ void main() {
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: CommentInput(controller: controller)),
+        home: Scaffold(
+          body: CommentInput(controller: controller, showLargeTextButton: true),
+        ),
       ),
     );
 
@@ -100,19 +134,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(
-      tester.widget<Text>(
-        find.descendant(
-          of: find.byType(Dialog),
-          matching: find.text(text),
-        ),
-      ).data,
+      tester
+          .widget<Text>(
+            find.descendant(of: find.byType(Dialog), matching: find.text(text)),
+          )
+          .data,
       text,
     );
     final scrollView = find.byType(SingleChildScrollView);
-    final scrollable = find.descendant(
-      of: scrollView,
-      matching: find.byType(Scrollable),
-    ).first;
+    final scrollable = find
+        .descendant(of: scrollView, matching: find.byType(Scrollable))
+        .first;
     expect(
       tester.state<ScrollableState>(scrollable).position.maxScrollExtent,
       greaterThan(0),
@@ -128,12 +160,12 @@ void main() {
     String? copiedText;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'Clipboard.setData') {
-        copiedText =
-            (call.arguments as Map<String, dynamic>)['text'] as String;
-      }
-      return null;
-    });
+          if (call.method == 'Clipboard.setData') {
+            copiedText =
+                (call.arguments as Map<String, dynamic>)['text'] as String;
+          }
+          return null;
+        });
     addTearDown(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null);

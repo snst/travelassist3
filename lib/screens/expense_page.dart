@@ -11,18 +11,27 @@ import '../widgets/date_time_picker_tile.dart';
 import '../widgets/days_input.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/expense_options.dart';
+import '../widgets/large_text_dialog.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/payment_currency_amount_input.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
+import 'expenses_list_page.dart';
+import 'note_actions.dart';
 
 class ExpensePage extends StatefulWidget {
   final AppDatabase database;
 
   /// An existing expense to edit; null to add a new one.
   final MoneyTransaction? transaction;
+  final bool openExpensesListOnSave;
 
-  const ExpensePage({super.key, required this.database, this.transaction});
+  const ExpensePage({
+    super.key,
+    required this.database,
+    this.transaction,
+    this.openExpensesListOnSave = false,
+  });
 
   @override
   State<ExpensePage> createState() => _ExpensePageState();
@@ -42,10 +51,17 @@ class _ExpensePageState extends State<ExpensePage> {
       actions: [
         if (existing != null)
           DeleteEntryButton(database: widget.database, transaction: existing),
+        SizedBox(width: 16),
         IconButton(
           tooltip: existing == null ? 'Save Expense' : 'Update Expense',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
+        ),
+        SizedBox(width: 16),
+        IconButton(
+          tooltip: 'View Info',
+          onPressed: () => _formKey.currentState?._showInfo(),
+          icon: const Icon(Icons.visibility_outlined),
         ),
       ],
       builder: (context, currencies, transactions) => _ExpenseForm(
@@ -54,6 +70,7 @@ class _ExpensePageState extends State<ExpensePage> {
         currencies: currencies,
         transactions: transactions,
         existing: existing,
+        openExpensesListOnSave: widget.openExpensesListOnSave,
       ),
     );
   }
@@ -66,6 +83,7 @@ class _ExpenseForm extends StatefulWidget {
   /// All stored transactions, newest first; used for default currency, methods and tags.
   final List<MoneyTransaction> transactions;
   final MoneyTransaction? existing;
+  final bool openExpensesListOnSave;
 
   const _ExpenseForm({
     super.key,
@@ -73,6 +91,7 @@ class _ExpenseForm extends StatefulWidget {
     required this.currencies,
     required this.transactions,
     required this.existing,
+    required this.openExpensesListOnSave,
   });
 
   @override
@@ -116,7 +135,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _currencyCode =
         t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
-    _tags = t?.tagList ?? [];
+    _tags = t?.editableTagList ?? [];
     _date = t?.date ?? DateTime.now();
     _averageDays = t?.days ?? 1;
     if (t == null) _methodController.text = _methods.first;
@@ -178,6 +197,20 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     });
   }
 
+  void _showInfo() {
+    FocusScope.of(context).unfocus();
+    showLargeTextDialog(
+      context,
+      _commentController.text,
+      emptyMessage: 'No info entered.',
+      links: _links.fields
+          .map((field) => field.text.trim())
+          .where((link) => link.isNotEmpty)
+          .toList(),
+      onOpenLink: openNoteLink,
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_tagDraft.trim().isNotEmpty) _addTag(_tagDraft);
@@ -216,7 +249,18 @@ class _ExpenseFormState extends State<_ExpenseForm> {
         ),
       );
     }
-    if (mounted) Navigator.of(context).pop(true);
+    if (mounted) {
+      if (widget.openExpensesListOnSave) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ExpensesListPage(database: widget.database),
+          ),
+          result: true,
+        );
+      } else {
+        Navigator.of(context).pop(true);
+      }
+    }
   }
 
   @override

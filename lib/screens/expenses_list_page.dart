@@ -44,6 +44,7 @@ class ExpensesListPage extends StatelessWidget {
                       );
                     },
                   ),
+                  SizedBox(width: 16),
                   IconButton(
                     icon: const Icon(Icons.pie_chart),
                     tooltip: 'View Balance',
@@ -55,6 +56,7 @@ class ExpensesListPage extends StatelessWidget {
                       );
                     },
                   ),
+                  SizedBox(width: 16),
                   if (!loading && currencies.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.add),
@@ -118,21 +120,6 @@ class _EntriesViewState extends State<_EntriesView> {
 
   void _clearFilters() {
     setState(_selectedTags.clear);
-  }
-
-  Future<void> _delete(BuildContext context, MoneyTransaction t) async {
-    final messenger = ScaffoldMessenger.of(context);
-    await widget.database.deleteTransaction(t.id);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('Entry deleted'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => widget.database.restoreTransaction(t),
-        ),
-      ),
-    );
   }
 
   @override
@@ -249,7 +236,6 @@ class _EntriesViewState extends State<_EntriesView> {
                       selectedTags: _selectedTags,
                       onTagSelected: _toggleTagFilter,
                       onTap: () => openTransaction(context, widget.database, t),
-                      onDelete: () => _delete(context, t),
                     );
                   },
                 ),
@@ -278,7 +264,6 @@ class _EntryTile extends StatelessWidget {
   final List<String> selectedTags;
   final ValueChanged<String> onTagSelected;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
 
   const _EntryTile({
     required this.transaction,
@@ -286,7 +271,6 @@ class _EntryTile extends StatelessWidget {
     required this.selectedTags,
     required this.onTagSelected,
     required this.onTap,
-    required this.onDelete,
   });
 
   String get _title {
@@ -294,7 +278,7 @@ class _EntryTile extends StatelessWidget {
       case TransactionKind.expense:
         return 'Expense';
       case TransactionKind.withdrawal:
-        return 'Withdrawal';
+        return 'ATM';
       case TransactionKind.deposit:
         return 'Deposit';
       case TransactionKind.cashCount:
@@ -312,7 +296,7 @@ class _EntryTile extends StatelessWidget {
         Theme.of(context).textTheme.titleMedium;
     final t = transaction;
     final detailStyle = TextStyle(color: scheme.primary, fontSize: 15);
-    final detailStyleSmall = TextStyle(color: scheme.primary, fontSize: 13);
+    final isBookedHotel = t.isHotel && t.tagList.contains('booked');
     final isOutgoing = t.isSpending;
     final sign = t.isCashCount && t.amount > 0 ? '+' : '';
     final isForeign =
@@ -321,14 +305,18 @@ class _EntryTile extends StatelessWidget {
     final paymentMethod = t.isSpending || t.isWithdrawal
         ? (t.method.isEmpty ? cashMethod : t.method)
         : null;
+    const hiddenTags = {hotelTag, expenseTag, atmTag, countTag, calendarTag};
+    final visibleTags = t.tagList
+        .where((tag) => !hiddenTags.contains(tag.toLowerCase()))
+        .toList();
     final subtitle = <Widget>[
       if (t.isHotel) const SizedBox(height: 2),
-      if (t.tagList.isNotEmpty || paymentMethod != null)
+      if (visibleTags.isNotEmpty || paymentMethod != null)
         Wrap(
           spacing: 4,
           runSpacing: 2,
           children: [
-            ...t.tagList.map((tag) {
+            ...visibleTags.map((tag) {
               final isSelected = selectedTags.contains(tag);
               return InkWell(
                 onTap: () => onTagSelected(tag),
@@ -374,73 +362,92 @@ class _EntryTile extends StatelessWidget {
               ),
           ],
         ),
-      if (t.isHotel && t.days > 0)
-        Text(
-          t.days == 1 ? '1 night' : '${t.days} nights',
-          style: detailStyleSmall.copyWith(fontWeight: FontWeight.w600),
-        ),
     ];
 
-    return Dismissible(
-      key: ValueKey(t.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        color: Colors.red,
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (_) => onDelete(),
-      child: Card(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        child: ListTile(
-          onTap: onTap,
-          leading: Container(
-            padding: t.isPlanned ? const EdgeInsets.all(2) : EdgeInsets.zero,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: t.isPlanned
-                  ? Border.all(color: scheme.primary, width: 2)
-                  : null,
-            ),
-            child: CircleAvatar(
-              backgroundColor: t.isHotel
-                  ? scheme.secondaryContainer
-                  : scheme.surfaceContainerHigh,
-              child: Icon(t.isHotel ? Icons.hotel : transactionIcon(t.type)),
-            ),
-          ),
-          title: Text(
-            hasInfo ? t.comment : _title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: titleStyle,
-          ),
-          subtitle: subtitle.isEmpty
-              ? null
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: subtitle,
-                ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
+    final leading = t.isHotel
+        ? Stack(
+            alignment: Alignment.bottomCenter,
+            clipBehavior: Clip.none,
             children: [
-              Text(
-                '$sign${home.toString()}',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: isOutgoing ? scheme.error : null,
+              CircleAvatar(
+                backgroundColor: t.isPlanned
+                    ? scheme.errorContainer
+                    : scheme.secondaryContainer,
+                child: Icon(
+                  Icons.hotel,
+                  color: t.isPlanned ? scheme.onErrorContainer : null,
                 ),
               ),
-              if (isForeign)
-                Text(
-                  '$sign${t.amount.toStringAsFixed(2)} ${t.currency}',
-                  style: detailStyle,
+              if (t.days > 0)
+                Positioned(
+                  bottom: -5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isBookedHotel
+                          ? Colors.green.shade700
+                          : scheme.secondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${t.days}',
+                      style: TextStyle(
+                        color: isBookedHotel
+                            ? Colors.white
+                            : scheme.onSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
             ],
-          ),
+          )
+        : CircleAvatar(
+            backgroundColor: t.isPlanned
+                ? scheme.errorContainer
+                : scheme.surfaceContainerHigh,
+            child: Icon(
+              transactionIcon(t.type),
+              color: t.isPlanned ? scheme.onErrorContainer : null,
+            ),
+          );
+
+    return Card(
+      key: ValueKey(t.id),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        onTap: onTap,
+        leading: leading,
+        title: Text(
+          hasInfo ? t.comment : _title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle,
+        ),
+        subtitle: subtitle.isEmpty
+            ? null
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: subtitle,
+              ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$sign${home.toString()}',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isOutgoing ? scheme.error : null,
+              ),
+            ),
+            if (isForeign)
+              Text(
+                '$sign${t.amount.toStringAsFixed(2)} ${t.currency}',
+                style: detailStyle,
+              ),
+          ],
         ),
       ),
     );

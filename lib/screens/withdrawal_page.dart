@@ -34,13 +34,14 @@ class _WithdrawalPageState extends State<WithdrawalPage> {
     return TransactionDataScaffold(
       database: widget.database,
       title: existing == null
-          ? 'Add Withdrawal'
+          ? 'Add ATM'
           : 'Edit ${transactionLabel(TransactionKind.withdrawal)}',
       actions: [
         if (existing != null)
           DeleteEntryButton(database: widget.database, transaction: existing),
+        SizedBox(width:16),
         IconButton(
-          tooltip: existing == null ? 'Save Withdrawal' : 'Update Withdrawal',
+          tooltip: existing == null ? 'Save ATM' : 'Update ATM',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
         ),
@@ -195,7 +196,7 @@ class _WithdrawalFormState extends State<_WithdrawalForm> {
             onPressed: _save,
             icon: const Icon(Icons.save),
             label: Text(
-              widget.existing == null ? 'Save Withdrawal' : 'Update Withdrawal',
+              widget.existing == null ? 'Save ATM' : 'Update ATM',
             ),
           ),
         ],

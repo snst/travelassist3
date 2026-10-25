@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/open.dart';
 import 'package:travelassist3/database/database.dart';
-import 'package:travelassist3/screens/cash_count_page.dart';
 import 'package:travelassist3/screens/currency_settings_screen.dart';
-import 'package:travelassist3/screens/deposit_page.dart';
 import 'package:travelassist3/screens/home_page.dart';
-import 'package:travelassist3/screens/withdrawal_page.dart';
+import 'package:travelassist3/screens/note_list_page.dart';
+import 'package:travelassist3/widgets/comment_input.dart';
 
 void main() {
   setUpAll(() {
@@ -130,17 +129,15 @@ void main() {
     expect(find.text('Calculator'), findsOneWidget);
 
     for (final entry in <String, Type>{
-      'ATM': WithdrawalPage,
-      'Deposit': DepositPage,
-      'Count Cash': CashCountPage,
       'Currencies': CurrencySettingsScreen,
     }.entries) {
       await tester.tap(find.byTooltip('Cash tools'));
       await tester.pumpAndSettle();
 
-      for (final label in ['ATM', 'Deposit', 'Count Cash', 'Currencies']) {
-        expect(find.text(label).hitTestable(), findsOneWidget);
+      for (final label in ['ATM', 'Deposit', 'Count Cash']) {
+        expect(find.text(label), findsNothing);
       }
+      expect(find.text('Currencies').hitTestable(), findsOneWidget);
 
       await tester.tap(find.text(entry.key));
       await tester.pumpAndSettle();
@@ -162,6 +159,43 @@ void main() {
     await database.close();
   });
 
+  for (final shortcut in ['Add Note', 'Add Position']) {
+    testWidgets('$shortcut from Home opens notes list after saving', (
+      tester,
+    ) async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomePage(title: 'Travel Assist', database: database),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(shortcut));
+      await tester.pumpAndSettle();
+      tester.widget<CommentInput>(find.byType(CommentInput)).controller.text =
+          'Saved from Home';
+      await tester.tap(find.byTooltip('Save Note'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NoteListPage), findsOneWidget);
+      expect(find.text('Saved from Home'), findsOneWidget);
+      final notes = await database.select(database.notes).get();
+      expect(notes, hasLength(1));
+      if (shortcut == 'Add Position') {
+        expect(notes.single.tagList, contains(positionTag));
+      }
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(HomePage), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
+    });
+  }
+
   testWidgets(
     'Add Position opens a focused note pre-tagged with location pin',
     (WidgetTester tester) async {
@@ -179,7 +213,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Add Note'), findsOneWidget);
-      expect(find.text('📍'), findsOneWidget);
+      expect(find.text(positionTag), findsOneWidget);
       expect(tester.testTextInput.isVisible, isTrue);
       expect(tester.takeException(), isNull);
     },

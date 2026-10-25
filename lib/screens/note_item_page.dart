@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 
 import '../database/database.dart';
 import '../widgets/comment_input.dart';
+import '../widgets/large_text_dialog.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
+import 'note_actions.dart';
+import 'note_list_page.dart';
 
 class NoteItemPage extends StatefulWidget {
   final AppDatabase database;
   final Note? note;
   final List<String> initialTags;
   final bool captureGpsLocation;
+  final bool openListOnSave;
 
   /// Prefill for a new note, e.g. content received from the share sheet.
   final List<String> initialLinks;
@@ -23,6 +27,7 @@ class NoteItemPage extends StatefulWidget {
     this.note,
     this.initialTags = const [],
     this.captureGpsLocation = false,
+    this.openListOnSave = false,
     this.initialLinks = const [],
     this.initialComment = '',
   });
@@ -126,10 +131,29 @@ class _NoteItemPageState extends State<NoteItemPage> {
               tooltip: 'Delete Note',
               onPressed: _confirmDelete,
             ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            tooltip: isNew ? 'Save Note' : 'Update Note',
-            onPressed: _saveNote,
+            SizedBox(width:16),
+            IconButton(
+              icon: const Icon(Icons.save),
+              tooltip: isNew ? 'Save Note' : 'Update Note',
+              onPressed: _saveNote,
+            ),
+            SizedBox(width:16),
+            IconButton(
+            icon: const Icon(Icons.visibility_outlined),
+            tooltip: 'View Info',
+            onPressed: () {
+              FocusScope.of(context).unfocus();
+              showLargeTextDialog(
+                context,
+                _commentController.text,
+                emptyMessage: 'No info entered.',
+                links: _links.fields
+                    .map((field) => field.text.trim())
+                    .where((link) => link.isNotEmpty)
+                    .toList(),
+                onOpenLink: openNoteLink,
+              );
+            },
           ),
         ],
       ),
@@ -214,7 +238,16 @@ class _NoteItemPageState extends State<NoteItemPage> {
       }
 
       if (mounted) {
-        Navigator.of(context).pop(true);
+        if (widget.openListOnSave) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => NoteListPage(database: widget.database),
+            ),
+            result: true,
+          );
+        } else {
+          Navigator.of(context).pop(true);
+        }
       }
     }
   }

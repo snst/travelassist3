@@ -35,6 +35,7 @@ class _DepositPageState extends State<DepositPage> {
       actions: [
         if (existing != null)
           DeleteEntryButton(database: widget.database, transaction: existing),
+        SizedBox(width:16),
         IconButton(
           tooltip: existing == null ? 'Save Deposit' : 'Update Deposit',
           onPressed: () => _formKey.currentState?._save(),

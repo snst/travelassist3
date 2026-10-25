@@ -11,18 +11,27 @@ import '../widgets/date_time_picker_tile.dart';
 import '../widgets/days_input.dart';
 import '../widgets/delete_entry_button.dart';
 import '../widgets/expense_options.dart';
+import '../widgets/large_text_dialog.dart';
 import '../widgets/link_editor.dart';
 import '../widgets/tag_editor.dart';
 import '../widgets/transaction_data_scaffold.dart';
 import '../widgets/payment_currency_amount_input.dart';
+import 'expenses_list_page.dart';
+import 'note_actions.dart';
 
 class HotelPage extends StatefulWidget {
   final AppDatabase database;
 
   /// An existing hotel booking to edit; null to add a new one.
   final MoneyTransaction? transaction;
+  final bool openExpensesListOnSave;
 
-  const HotelPage({super.key, required this.database, this.transaction});
+  const HotelPage({
+    super.key,
+    required this.database,
+    this.transaction,
+    this.openExpensesListOnSave = false,
+  });
 
   @override
   State<HotelPage> createState() => _HotelPageState();
@@ -42,10 +51,17 @@ class _HotelPageState extends State<HotelPage> {
       actions: [
         if (existing != null)
           DeleteEntryButton(database: widget.database, transaction: existing),
+        SizedBox(width: 16),
         IconButton(
           tooltip: existing == null ? 'Save Hotel' : 'Update Hotel',
           onPressed: () => _formKey.currentState?._save(),
           icon: const Icon(Icons.save),
+        ),
+        SizedBox(width: 16),
+        IconButton(
+          tooltip: 'View Info',
+          onPressed: () => _formKey.currentState?._showInfo(),
+          icon: const Icon(Icons.visibility_outlined),
         ),
       ],
       builder: (context, currencies, transactions) => _HotelForm(
@@ -54,6 +70,7 @@ class _HotelPageState extends State<HotelPage> {
         currencies: currencies,
         transactions: transactions,
         existing: existing,
+        openExpensesListOnSave: widget.openExpensesListOnSave,
       ),
     );
   }
@@ -66,6 +83,7 @@ class _HotelForm extends StatefulWidget {
   /// All stored transactions, newest first; used for default currency, methods and tags.
   final List<MoneyTransaction> transactions;
   final MoneyTransaction? existing;
+  final bool openExpensesListOnSave;
 
   const _HotelForm({
     super.key,
@@ -73,6 +91,7 @@ class _HotelForm extends StatefulWidget {
     required this.currencies,
     required this.transactions,
     required this.existing,
+    required this.openExpensesListOnSave,
   });
 
   @override
@@ -115,7 +134,7 @@ class _HotelFormState extends State<_HotelForm> {
     _currencyCode =
         t?.currency ??
         defaultCurrencyCode(widget.currencies, widget.transactions);
-    _tags = t?.tagList ?? [plannedTag, calendarTag];
+    _tags = t?.editableTagList ?? [plannedTag, calendarTag];
     _date = t?.date ?? DateTime.now();
     _days = t?.days ?? 1;
     if (t == null) _methodController.text = _methods.first;
@@ -168,6 +187,20 @@ class _HotelFormState extends State<_HotelForm> {
     });
   }
 
+  void _showInfo() {
+    FocusScope.of(context).unfocus();
+    showLargeTextDialog(
+      context,
+      _commentController.text,
+      emptyMessage: 'No info entered.',
+      links: _links.fields
+          .map((field) => field.text.trim())
+          .where((link) => link.isNotEmpty)
+          .toList(),
+      onOpenLink: openNoteLink,
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_tagDraft.trim().isNotEmpty) _addTag(_tagDraft);
@@ -204,7 +237,18 @@ class _HotelFormState extends State<_HotelForm> {
         ),
       );
     }
-    if (mounted) Navigator.of(context).pop(true);
+    if (mounted) {
+      if (widget.openExpensesListOnSave) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => ExpensesListPage(database: widget.database),
+          ),
+          result: true,
+        );
+      } else {
+        Navigator.of(context).pop(true);
+      }
+    }
   }
 
   @override

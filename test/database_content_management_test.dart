@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/open.dart';
 import 'package:travelassist3/database/database.dart';
+import 'package:travelassist3/screens/database_content_page.dart';
 import 'package:travelassist3/screens/home_page.dart';
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Database'));
     await tester.pumpAndSettle();
+    expect(find.byType(DatabaseContentPage), findsOneWidget);
     expect(tester.takeException(), isNull);
   }
 
@@ -56,7 +58,7 @@ void main() {
     for (final label in ['Currencies', 'Checklist', 'Notes', 'Transactions']) {
       expect(
         find.descendant(
-          of: find.byType(Dialog).last,
+          of: find.byType(DatabaseContentPage),
           matching: find.text(label),
         ),
         findsOneWidget,
