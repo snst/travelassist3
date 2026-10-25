@@ -25,6 +25,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Travel Assist'), findsWidgets);
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).title, 'REISE');
   });
 
   testWidgets('switching dark mode in settings does not crash', (tester) async {
