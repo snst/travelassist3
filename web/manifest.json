@@ -1,6 +1,6 @@
 {
-    "name": "REISE",
-    "short_name": "REISE",
+    "name": "Reise",
+    "short_name": "Reise",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
